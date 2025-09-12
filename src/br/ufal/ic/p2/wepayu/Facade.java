@@ -2,6 +2,8 @@ package br.ufal.ic.p2.wepayu;
 
 import br.ufal.ic.p2.wepayu.models.Empregado;
 import br.ufal.ic.p2.wepayu.models.CartaoPonto;
+import br.ufal.ic.p2.wepayu.models.Venda;
+import br.ufal.ic.p2.wepayu.models.TaxaServico;
 import java.beans.XMLEncoder;
 import java.beans.XMLDecoder;
 import java.io.*;
@@ -12,6 +14,9 @@ public class Facade {
 
     private Map<String, Empregado> empregados = new HashMap<>();
     private Map<String, List<CartaoPonto>> cartoes = new HashMap<>();
+    private Map<String, List<Venda>> vendas = new HashMap<>();
+    private Map<String, List<TaxaServico>> taxasServico = new HashMap<>();
+    private Map<String, String> idSindicatoToEmpregado = new HashMap<>();
     private int nextId = 1;
     private static final String FILE = "empregados.xml";
 
@@ -22,6 +27,9 @@ public class Facade {
     public void zerarSistema() {
         empregados.clear();
         cartoes.clear();
+        vendas.clear();
+        taxasServico.clear();
+        idSindicatoToEmpregado.clear();
         nextId = 1;
     }
 
@@ -32,12 +40,12 @@ public class Facade {
     private void salvar() {
         try (XMLEncoder encoder = new XMLEncoder(
                 new BufferedOutputStream(new FileOutputStream(FILE)))) {
-            // Salvar empregados
             encoder.writeObject(new ArrayList<>(empregados.values()));
-            // Salvar próximo ID
             encoder.writeObject(nextId);
-            // Salvar cartões de ponto
             encoder.writeObject(new HashMap<>(cartoes));
+            encoder.writeObject(new HashMap<>(vendas));
+            encoder.writeObject(new HashMap<>(taxasServico));
+            encoder.writeObject(new HashMap<>(idSindicatoToEmpregado));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -49,14 +57,13 @@ public class Facade {
         if (!f.exists()) return;
         try (XMLDecoder decoder = new XMLDecoder(
                 new BufferedInputStream(new FileInputStream(FILE)))) {
-            // Carregar empregados
             List<Empregado> lista = (List<Empregado>) decoder.readObject();
-            // Carregar próximo ID
             nextId = (Integer) decoder.readObject();
-            // Carregar cartões de ponto
             cartoes = (Map<String, List<CartaoPonto>>) decoder.readObject();
+            vendas = (Map<String, List<Venda>>) decoder.readObject();
+            taxasServico = (Map<String, List<TaxaServico>>) decoder.readObject();
+            idSindicatoToEmpregado = (Map<String, String>) decoder.readObject();
             
-            // Reconstruir mapa de empregados
             for (Empregado e : lista) {
                 empregados.put(e.getId(), e);
             }
@@ -110,7 +117,12 @@ public class Facade {
             throw new Exception("Identificacao do empregado nao pode ser nula.");
         }
         Empregado e = empregados.remove(empId);
-        cartoes.remove(empId); // remove também os cartões de ponto do empregado
+        cartoes.remove(empId);
+        vendas.remove(empId);
+        if (e != null && e.isSindicalizado() && e.getIdSindicato() != null) {
+            taxasServico.remove(e.getIdSindicato());
+            idSindicatoToEmpregado.remove(e.getIdSindicato());
+        }
         if (e == null) {
             throw new Exception("Empregado nao existe.");
         }
@@ -171,6 +183,93 @@ public class Facade {
         sdf.setLenient(false);
         Date dataInicial;
         Date dataFinal;
+        try { dataInicial = sdf.parse(dataInicialStr); } 
+        catch (Exception ex) { throw new Exception("Data inicial invalida."); }
+        try { dataFinal = sdf.parse(dataFinalStr); } 
+        catch (Exception ex) { throw new Exception("Data final invalida."); }
+
+        if (dataInicial.after(dataFinal))
+            throw new Exception("Data inicial nao pode ser posterior aa data final.");
+
+        List<CartaoPonto> lista = cartoes.getOrDefault(empId, new ArrayList<>());
+        double total = 0;
+
+        Map<String, Double> horasPorDia = new HashMap<>();
+        for (CartaoPonto c : lista) {
+            Date d = c.getData();
+            if (d.compareTo(dataInicial) >= 0 && d.compareTo(dataFinal) < 0) {
+                String dia = sdf.format(d);
+                horasPorDia.put(dia, horasPorDia.getOrDefault(dia, 0.0) + c.getHoras());
+            }
+        }
+
+        for (double hDia : horasPorDia.values()) {
+            if (normais) {
+                total += Math.min(hDia, 8);
+            } else {
+                total += Math.max(0, hDia - 8);
+            }
+        }
+
+        return total;
+    }
+
+    private String formatarHoras(double horas) {
+        if (horas == (long) horas)
+            return String.format("%d", (long) horas);
+        return String.format("%.1f", horas).replace('.', ',');
+    }
+
+    // ---------------------
+    // US4 - Lançamento de vendas
+    public void lancaVenda(String empId, String dataStr, String valorStr) throws Exception {
+        if (empId == null || empId.isEmpty())
+            throw new Exception("Identificacao do empregado nao pode ser nula.");
+
+        Empregado e = empregados.get(empId);
+        if (e == null)
+            throw new Exception("Empregado nao existe.");
+
+        if (!e.getTipo().equals("comissionado"))
+            throw new Exception("Empregado nao eh comissionado.");
+
+        double valor = parseValor(valorStr, "Valor");
+        if (valor <= 0)
+            throw new Exception("Valor deve ser positivo.");
+
+        Date data;
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("d/M/yyyy");
+            sdf.setLenient(false);
+            data = sdf.parse(dataStr);
+        } catch (Exception ex) {
+            throw new Exception("Data invalida.");
+        }
+
+        vendas.computeIfAbsent(empId, k -> new ArrayList<>())
+                .add(new Venda(data, valor));
+    }
+
+    public String getVendasRealizadas(String empId, String dataInicialStr, String dataFinalStr) throws Exception {
+        double total = calcularVendas(empId, dataInicialStr, dataFinalStr);
+        return formatarValor(total);
+    }
+
+    private double calcularVendas(String empId, String dataInicialStr, String dataFinalStr) throws Exception {
+        if (empId == null || empId.isEmpty())
+            throw new Exception("Identificacao do empregado nao pode ser nula.");
+
+        Empregado e = empregados.get(empId);
+        if (e == null)
+            throw new Exception("Empregado nao existe.");
+
+        if (!e.getTipo().equals("comissionado"))
+            throw new Exception("Empregado nao eh comissionado.");
+
+        SimpleDateFormat sdf = new SimpleDateFormat("d/M/yyyy");
+        sdf.setLenient(false);
+        Date dataInicial;
+        Date dataFinal;
         try { 
             dataInicial = sdf.parse(dataInicialStr); 
         } catch (Exception ex) { 
@@ -185,42 +284,139 @@ public class Facade {
         if (dataInicial.after(dataFinal))
             throw new Exception("Data inicial nao pode ser posterior aa data final.");
 
-        List<CartaoPonto> lista = cartoes.getOrDefault(empId, new ArrayList<>());
+        List<Venda> lista = vendas.getOrDefault(empId, new ArrayList<>());
         double total = 0;
 
-        // Agrupar horas por dia
-        Map<String, Double> horasPorDia = new HashMap<>();
-        for (CartaoPonto c : lista) {
-            Date d = c.getData();
-            // Verificar se a data está no intervalo [dataInicial, dataFinal)
+        for (Venda v : lista) {
+            Date d = v.getData();
             if (d.compareTo(dataInicial) >= 0 && d.compareTo(dataFinal) < 0) {
-                String dia = sdf.format(d);
-                horasPorDia.put(dia, horasPorDia.getOrDefault(dia, 0.0) + c.getHoras());
-            }
-        }
-
-        // Calcular horas normais ou extras
-        for (double hDia : horasPorDia.values()) {
-            if (normais) {
-                total += Math.min(hDia, 8);   // Até 8 horas normais por dia
-            } else {
-                total += Math.max(0, hDia - 8); // Horas extras além das 8
+                total += v.getValor();
             }
         }
 
         return total;
     }
 
-    private String formatarHoras(double horas) {
-        // Se não tem decimais, retorna inteiro
-        if (horas == (long) horas)
-            return String.format("%d", (long) horas);
-        // Caso contrário, manter apenas uma casa decimal para passar o teste "1,5"
-        return String.format("%.1f", horas).replace('.', ',');
+    // ---------------------
+    // US5 - Taxas de serviço
+    public void alteraEmpregado(String empId, String atributo, String valor) throws Exception {
+        alteraEmpregado(empId, atributo, valor, null, null);
+    }
+
+    public void alteraEmpregado(String empId, String atributo, String valor, String idSindicato, String taxaSindical) throws Exception {
+        Empregado e = empregados.get(empId);
+        if (e == null) throw new Exception("Empregado nao existe.");
+
+        if (atributo.equals("sindicalizado")) {
+            if (valor.equals("true")) {
+                if (idSindicato == null || idSindicato.isEmpty())
+                    throw new Exception("Identificacao do sindicato nao pode ser nula.");
+                if (taxaSindical == null || taxaSindical.isEmpty())
+                    throw new Exception("Taxa sindical nao pode ser nula.");
+                
+                if (idSindicatoToEmpregado.containsKey(idSindicato) && 
+                    !idSindicatoToEmpregado.get(idSindicato).equals(empId)) {
+                    throw new Exception("Ha outro empregado com esta identificacao de sindicato");
+                }
+
+                double taxa = parseValor(taxaSindical, "Taxa sindical");
+                if (taxa < 0) throw new Exception("Taxa sindical deve ser nao-negativa.");
+
+                e.setSindicalizado(true);
+                e.setIdSindicato(idSindicato);
+                e.setTaxaSindical(taxa);
+                idSindicatoToEmpregado.put(idSindicato, empId);
+            } else {
+                e.setSindicalizado(false);
+                if (e.getIdSindicato() != null) {
+                    idSindicatoToEmpregado.remove(e.getIdSindicato());
+                    taxasServico.remove(e.getIdSindicato());
+                }
+                e.setIdSindicato(null);
+                e.setTaxaSindical(0);
+            }
+        } else {
+            throw new Exception("Atributo nao existe.");
+        }
+    }
+
+    public void lancaTaxaServico(String membro, String dataStr, String valorStr) throws Exception {
+        if (membro == null || membro.isEmpty())
+            throw new Exception("Identificacao do membro nao pode ser nula.");
+
+        if (!idSindicatoToEmpregado.containsKey(membro))
+            throw new Exception("Membro nao existe.");
+
+        double valor = parseValor(valorStr, "Valor");
+        if (valor <= 0)
+            throw new Exception("Valor deve ser positivo.");
+
+        Date data;
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("d/M/yyyy");
+            sdf.setLenient(false);
+            data = sdf.parse(dataStr);
+        } catch (Exception ex) {
+            throw new Exception("Data invalida.");
+        }
+
+        taxasServico.computeIfAbsent(membro, k -> new ArrayList<>())
+                .add(new TaxaServico(data, valor));
+    }
+
+    public String getTaxasServico(String empId, String dataInicialStr, String dataFinalStr) throws Exception {
+        double total = calcularTaxasServico(empId, dataInicialStr, dataFinalStr);
+        return formatarValor(total);
+    }
+
+    private double calcularTaxasServico(String empId, String dataInicialStr, String dataFinalStr) throws Exception {
+        if (empId == null || empId.isEmpty())
+            throw new Exception("Identificacao do empregado nao pode ser nula.");
+
+        Empregado e = empregados.get(empId);
+        if (e == null)
+            throw new Exception("Empregado nao existe.");
+
+        if (!e.isSindicalizado())
+            throw new Exception("Empregado nao eh sindicalizado.");
+
+        SimpleDateFormat sdf = new SimpleDateFormat("d/M/yyyy");
+        sdf.setLenient(false);
+        Date dataInicial;
+        Date dataFinal;
+        try { 
+            dataInicial = sdf.parse(dataInicialStr); 
+        } catch (Exception ex) { 
+            throw new Exception("Data inicial invalida."); 
+        }
+        try { 
+            dataFinal = sdf.parse(dataFinalStr); 
+        } catch (Exception ex) { 
+            throw new Exception("Data final invalida."); 
+        }
+
+        if (dataInicial.after(dataFinal))
+            throw new Exception("Data inicial nao pode ser posterior aa data final.");
+
+        List<TaxaServico> lista = taxasServico.getOrDefault(e.getIdSindicato(), new ArrayList<>());
+        double total = 0;
+
+        for (TaxaServico t : lista) {
+            Date d = t.getData();
+            if (d.compareTo(dataInicial) >= 0 && d.compareTo(dataFinal) < 0) {
+                total += t.getValor();
+            }
+        }
+
+        return total;
     }
 
     // ---------------------
-    // Validação de criação de empregado
+    // Métodos auxiliares
+    private String formatarValor(double valor) {
+        return String.format("%.2f", valor).replace('.', ',');
+    }
+
     private void validarCriacao(String nome, String endereco, String tipo, String salario, String comissao) throws Exception {
         if (nome == null || nome.isEmpty())
             throw new Exception("Nome nao pode ser nulo.");
