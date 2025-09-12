@@ -86,6 +86,18 @@ public class Facade {
 
     // ---------------------
 
+    public void removerEmpregado(String empId) throws Exception {
+        if (empId == null || empId.isEmpty()) {
+            throw new Exception("Identificacao do empregado nao pode ser nula.");
+        }
+        Empregado e = empregados.remove(empId);
+        if (e == null) {
+            throw new Exception("Empregado nao existe.");
+        }
+    }
+
+    // ---------------------
+
     private void validarCriacao(String nome, String endereco, String tipo, String salario, String comissao) throws Exception {
         if (nome == null || nome.isEmpty())
             throw new Exception("Nome nao pode ser nulo.");
