@@ -103,10 +103,10 @@ public class Facade {
             throw new Exception("Salario deve ser nao-negativo.");
 
         if (tipo.equals("comissionado")) {
-            // ⚠️ Se comissao não foi passada (null), então é tipo errado
+            // Se comissao não foi passada (null), então é tipo errado
             if (comissao == null)
                 throw new Exception("Tipo nao aplicavel.");
-            // ⚠️ Se comissao foi passada mas está vazia
+            // Se comissao foi passada mas está vazia
             if (comissao.isEmpty())
                 throw new Exception("Comissao nao pode ser nula.");
             if (!isNumeroValido(comissao))
