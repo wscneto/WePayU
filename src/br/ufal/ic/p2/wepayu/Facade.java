@@ -4,6 +4,7 @@ import br.ufal.ic.p2.wepayu.Controller.SistemaEmpregados;
 import br.ufal.ic.p2.wepayu.Exception.*;
 import br.ufal.ic.p2.wepayu.models.Empregado;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,10 +18,12 @@ public class Facade {
     }
 
     public void encerrarSistema() {
-        zerarSistema();
+        sistema = new SistemaEmpregados();
     }
     
     public void zerarSistema() {
+        File empregadosFile = new File("data/empregados.xml");
+        empregadosFile.delete();
         sistema = new SistemaEmpregados();
     }
 
@@ -30,6 +33,10 @@ public class Facade {
 
     public String criarEmpregado(String nome, String endereco, String tipo, String salarioStr) throws Exception {
         return sistema.criarEmpregado(nome, endereco, tipo, salarioStr);
+    }
+
+    public void removerEmpregado(String id) throws Exception {
+        sistema.removerEmpregado(id);
     }
 
     public String criarEmpregado(String nome, String endereco, String tipo, String salarioStr, String comissaoStr) throws Exception {

@@ -19,6 +19,11 @@ public class RepositorioEmpregados {
         salvar();
     }
 
+    public void remover(Empregado e) {
+        empregados.remove(e);
+        salvar();
+    }
+
     public Empregado getEmpregadoPorId(String id) {
         for (Empregado e : empregados) {
             if (e.getId().equals(id)) {

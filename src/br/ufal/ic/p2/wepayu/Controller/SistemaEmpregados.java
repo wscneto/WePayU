@@ -41,6 +41,11 @@ public class SistemaEmpregados {
         return criarEmpregado(nome, endereco, tipo, salarioStr, null);
     }
 
+    public void removerEmpregado(String id) throws Exception {
+        Empregado e = getEmpregadoPorId(id);
+        repo.remover(e);
+    }
+
     public String criarEmpregado(String nome, String endereco, String tipo, String salarioStr, String comissaoStr) throws Exception {
         // Validações básicas
         if (nome == null || nome.trim().isEmpty()) throw new NomeNuloException();
@@ -75,7 +80,7 @@ public class SistemaEmpregados {
     }
 
     public Empregado getEmpregadoPorId(String id) throws Exception {
-        if (id == null || id.isEmpty()) throw new EmpregadoNaoExisteException();
+        if (id == null || id.isEmpty()) throw new IdentificacaoNulaException();
         Empregado e = repo.getEmpregadoPorId(id);
         if (e == null) throw new EmpregadoNaoExisteException();
         return e;
