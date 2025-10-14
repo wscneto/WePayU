@@ -1,34 +1,47 @@
 package br.ufal.ic.p2.wepayu.models;
 
 import br.ufal.ic.p2.wepayu.Exception.EmpregadoNaoExisteException;
+import java.io.Serializable;
 
-public class Empregado {
+public class Empregado implements Serializable{
+    private String id;
     private String nome;
     private String endereco;
     private String tipo;
-    private int salario;
+    private double salario;
+    private double comissao;
+    private boolean sindicalizado = false;
 
-    public Empregado(String nome, String endereco, String tipo, int salario) throws EmpregadoNaoExisteException {
+    public Empregado() {}
+
+    public Empregado(String id, String nome, String endereco, String tipo, double salario, double comissao) throws EmpregadoNaoExisteException {
+        this.id = id;
         this.nome = nome;
         this.endereco = endereco;
         this.tipo = tipo;
         this.salario = salario;
+        this.comissao = comissao;
     }
 
-    public String getNome() {
-        return nome;
-    }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
-    public String getEndereco() {
-        return endereco;
-    }
+    public String getNome() { return nome; }
+    public void setNome(String nome) { this.nome = nome; }
 
-    public String getTipo() {
-        return tipo;
-    }
+    public String getEndereco() { return endereco; }
+    public void setEndereco(String endereco) { this.endereco = endereco; }
 
-    public int getSalario() {
-        return salario;
-    }
+    public String getTipo() { return tipo; }
+    public void setTipo(String tipo) { this.tipo = tipo; }
+
+    public double getSalario() { return salario; }
+    public void setSalario(double salario) { this.salario = salario; }
+
+    public double getComissao() { return comissao; }
+    public void setComissao(double comissao) { this.comissao = comissao; }
+
+    public boolean getSindicalizado() { return sindicalizado; }
+    public void setSindicalizado (boolean sindicalizado) { this.sindicalizado = sindicalizado; }
 
 }
