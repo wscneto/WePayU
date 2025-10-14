@@ -54,4 +54,18 @@ public class Facade {
     public List<Empregado> getTodosEmpregados() {
         return sistema.getTodosEmpregados();
     }
+
+    public void lancaCartao(String id, String data, String horas) throws Exception {
+        sistema.lancaCartao(id, data, horas);
+    }
+
+    public String getHorasNormaisTrabalhadas(String emp, String dataInicial, String dataFinal) throws Exception {
+        String valor = sistema.getHorasNormaisTrabalhadas(emp, dataInicial, dataFinal);
+        return valor;
+    }
+
+    public String getHorasExtrasTrabalhadas(String emp, String dataInicial, String dataFinal) throws Exception {
+        String valor = sistema.getHorasExtrasTrabalhadas(emp, dataInicial, dataFinal);
+        return valor;
+    }
 }

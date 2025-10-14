@@ -2,22 +2,31 @@ package br.ufal.ic.p2.wepayu.Controller;
 
 import br.ufal.ic.p2.wepayu.RepositorioEmpregados;
 import br.ufal.ic.p2.wepayu.Exception.*;
+import br.ufal.ic.p2.wepayu.models.CartaoPonto;
 import br.ufal.ic.p2.wepayu.models.Empregado;
 import br.ufal.ic.p2.wepayu.util.Conversor;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.sql.Date;
+import java.time.LocalDate;
+import java.time.Month;
+import java.time.Year;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 public class SistemaEmpregados {
     private RepositorioEmpregados repo = new RepositorioEmpregados();
     private int contadorId = 1;
-    
-    //public void zerarSistema()
-    //{
-    //    empregados.clear();
-    //    contadorId = 1;
-    //}
+
+    public SistemaEmpregados() {
+        repo.carregar();
+        int maxId = repo.getEmpregados().stream()
+                        .mapToInt(e -> Integer.parseInt(e.getId()))
+                        .max().orElse(0);
+        contadorId = maxId + 1;
+    }
 
     public String getAtributoEmpregado(String id, String atributo) throws Exception {
         if (id == null || id.isEmpty()) throw new IdentificacaoNulaException();
@@ -94,5 +103,106 @@ public class SistemaEmpregados {
 
     public List<Empregado> getTodosEmpregados() {
         return repo.getEmpregados();
+    }
+
+    public void lancaCartao(String id, String data, String horasStr) throws Exception {
+        if (id == null || id.isEmpty()) throw new IdentificacaoNulaException();
+
+        Empregado e = getEmpregadoPorId(id);
+        if (!e.getTipo().equals("horista")) throw new EmpregadoNaoEhHoristaException();
+
+        LocalDate dataLida;
+        try {
+            DateTimeFormatter f = DateTimeFormatter.ofPattern("d/M/yyyy");
+            try { 
+                dataLida = LocalDate.parse(data, f);
+            } catch (DateTimeParseException ex) {
+                throw new DataInvalidaException();
+            }
+        } catch (NumberFormatException ex) {
+            throw new DataInvalidaException();
+        }
+
+        double horas;
+        try {
+            horas = Conversor.parseDouble(horasStr);
+        } catch (NumberFormatException ex) {
+            throw new HorasNaoNumericasException();
+        }
+
+        if (horas <= 0) throw new HorasDevemSerPositivasException();
+
+        e.adicionarCartao(new CartaoPonto(id, dataLida, horas));
+        repo.salvar();
+    }
+
+    public String getHorasNormaisTrabalhadas(String emp, String dataInicial, String dataFinal) throws Exception {
+        return calcularHoras(emp, dataInicial, dataFinal, false);
+    }
+
+    public String getHorasExtrasTrabalhadas(String emp, String dataInicial, String dataFinal) throws Exception {
+        return calcularHoras(emp, dataInicial, dataFinal, true);
+    }
+
+    private String calcularHoras(String emp, String dataInicial, String dataFinal, boolean extras) throws Exception {
+        if (emp == null || emp.trim().isEmpty()) throw new IdentificacaoNulaException();
+
+        Empregado e = getEmpregadoPorId(emp);
+        if (!e.getTipo().equals("horista")) throw new EmpregadoNaoEhHoristaException();
+        if (e.getCartoes().isEmpty()) return "0";
+
+        // Validação manual das datas
+        LocalDate ini = parseData(dataInicial, true);
+        LocalDate fim = parseData(dataFinal, false);
+
+        if (ini.isAfter(fim)) throw new DataInicialPosteriorException();
+
+        double soma = 0;
+        for (CartaoPonto c : e.getCartoes()) {
+            // Inclui dia inicial, exclui dia final
+            if ((c.getData().isEqual(ini) || c.getData().isAfter(ini)) &&
+                c.getData().isBefore(fim)) {
+                double horas = c.getHoras();
+                if (extras) {
+                    soma += Math.max(0, horas - 8);
+                } else {
+                    soma += Math.min(8, horas);
+                }
+            }
+        }
+
+        return formatarNumero(soma);
+    }
+
+    private LocalDate parseData(String dataStr, boolean inicial) throws Exception {
+        String[] partes = dataStr.split("/");
+        if (partes.length != 3) throw inicial ? new DataInicialInvalidaException() : new DataFinalInvalidaException();
+
+        int dia, mes, ano;
+        try {
+            dia = Integer.parseInt(partes[0]);
+            mes = Integer.parseInt(partes[1]);
+            ano = Integer.parseInt(partes[2]);
+        } catch (NumberFormatException ex) {
+            throw inicial ? new DataInicialInvalidaException() : new DataFinalInvalidaException();
+        }
+
+        // Valida mês
+        if (mes < 1 || mes > 12) throw inicial ? new DataInicialInvalidaException() : new DataFinalInvalidaException();
+
+        // Valida dia
+        int maxDia = Month.of(mes).length(Year.isLeap(ano));
+        if (dia < 1 || dia > maxDia) throw inicial ? new DataInicialInvalidaException() : new DataFinalInvalidaException();
+
+        return LocalDate.of(ano, mes, dia);
+    }
+
+    private static String formatarNumero(double valor) {
+        if (valor == (long) valor) {
+            return String.format("%d", (long) valor);
+        }
+        String s = String.format("%.1f", valor).replace('.', ',');
+        s = s.replaceAll(",00$", "");
+        return s;
     }
 }

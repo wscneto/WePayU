@@ -2,6 +2,9 @@ package br.ufal.ic.p2.wepayu.models;
 
 import br.ufal.ic.p2.wepayu.Exception.EmpregadoNaoExisteException;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import br.ufal.ic.p2.wepayu.models.CartaoPonto;
 
 public class Empregado implements Serializable{
     private String id;
@@ -11,8 +14,11 @@ public class Empregado implements Serializable{
     private double salario;
     private double comissao;
     private boolean sindicalizado = false;
+    private List<CartaoPonto> cartoes = new ArrayList<>();
 
-    public Empregado() {}
+    public Empregado() {
+        this.cartoes = new ArrayList<>();
+    }
 
     public Empregado(String id, String nome, String endereco, String tipo, double salario, double comissao) throws EmpregadoNaoExisteException {
         this.id = id;
@@ -44,4 +50,8 @@ public class Empregado implements Serializable{
     public boolean getSindicalizado() { return sindicalizado; }
     public void setSindicalizado (boolean sindicalizado) { this.sindicalizado = sindicalizado; }
 
+    public List<CartaoPonto> getCartoes() { return cartoes; }
+    public void setCartoes(List<CartaoPonto> cartoes) { this.cartoes = cartoes; }
+    
+    public void adicionarCartao(CartaoPonto c) { cartoes.add(c); }
 }

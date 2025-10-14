@@ -48,7 +48,7 @@ public class RepositorioEmpregados {
         salvar();
     }
 
-    private void salvar() {
+    public void salvar() {
         try {
             new File("data").mkdirs();
             XMLEncoder encoder = new XMLEncoder(new BufferedOutputStream(new FileOutputStream(arquivo)));
@@ -59,7 +59,7 @@ public class RepositorioEmpregados {
         }
     }
 
-    private void carregar() {
+    public void carregar() {
         File f = new File(arquivo);
         if (!f.exists()) return;
 
