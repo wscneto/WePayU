@@ -4,10 +4,12 @@ import br.ufal.ic.p2.wepayu.RepositorioEmpregados;
 import br.ufal.ic.p2.wepayu.Exception.*;
 import br.ufal.ic.p2.wepayu.models.CartaoPonto;
 import br.ufal.ic.p2.wepayu.models.Empregado;
+import br.ufal.ic.p2.wepayu.models.Venda;
 import br.ufal.ic.p2.wepayu.util.Conversor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.sql.Date;
 import java.time.LocalDate;
@@ -104,6 +106,10 @@ public class SistemaEmpregados {
     public List<Empregado> getTodosEmpregados() {
         return repo.getEmpregados();
     }
+
+    // *********************************************
+    // LANCAR CARTAO
+    // *********************************************
 
     public void lancaCartao(String id, String data, String horasStr) throws Exception {
         if (id == null || id.isEmpty()) throw new IdentificacaoNulaException();
@@ -204,5 +210,64 @@ public class SistemaEmpregados {
         String s = String.format("%.1f", valor).replace('.', ',');
         s = s.replaceAll(",00$", "");
         return s;
+    }
+
+    // *********************************************
+    // LANCAR VENDAS
+    // *********************************************
+
+    public void lancaVenda(String id, String data, String valorStr) throws Exception {
+        if (id == null || id.trim().isEmpty()) throw new IdentificacaoNulaException();
+
+        Empregado e = getEmpregadoPorId(id);
+        if (!e.getTipo().equals("comissionado")) throw new EmpregadoNaoEhComissionadoException();
+
+        LocalDate dataLida;
+        try {
+            DateTimeFormatter f = DateTimeFormatter.ofPattern("d/M/yyyy");
+            try { 
+                dataLida = LocalDate.parse(data, f);
+            } catch (DateTimeParseException ex) {
+                throw new DataInvalidaException();
+            }
+        } catch (NumberFormatException ex) {
+            throw new DataInvalidaException();
+        }
+
+        double valor;
+        try {
+            valor = Conversor.parseDouble(valorStr);
+        } catch (NumberFormatException ex) {
+            throw new ValorNaoNumericoException();
+        }
+
+        if (valor <= 0) throw new ValorDeveSerPositivoException();
+
+        e.adicionarVenda(new Venda(id, dataLida, valor));
+        repo.salvar();
+    }
+
+    public String getVendasRealizadas(String id, String dataInicial, String dataFinal) throws Exception {
+        if (id == null || id.trim().isEmpty()) throw new IdentificacaoNulaException();
+
+        Empregado e = getEmpregadoPorId(id);
+        if (!e.getTipo().equals("comissionado")) throw new EmpregadoNaoEhComissionadoException();
+        
+        // Validação manual das datas
+        LocalDate ini = parseData(dataInicial, true);
+        LocalDate fim = parseData(dataFinal, false);
+
+        if (ini.isAfter(fim)) throw new DataInicialPosteriorException();
+
+        double total = 0.0;
+        for (Venda v : e.getVendas()) {
+            LocalDate dataVenda = LocalDate.of(v.getAno(), v.getMes(), v.getDia());
+            if ((dataVenda.isAfter(ini) || dataVenda.isEqual(ini)) &&
+                (dataVenda.isBefore(fim))) {
+                total += v.getValor();
+            }
+        }
+
+        return String.format(Locale.US, "%.2f", total).replace('.', ',');
     }
 }

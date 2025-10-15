@@ -68,4 +68,13 @@ public class Facade {
         String valor = sistema.getHorasExtrasTrabalhadas(emp, dataInicial, dataFinal);
         return valor;
     }
+
+    public void lancaVenda(String id, String data, String valor) throws Exception {
+        sistema.lancaVenda(id, data, valor);
+    }
+
+    public String getVendasRealizadas(String id, String dataInicial, String dataFinal) throws Exception {
+        String valor = sistema.getVendasRealizadas(id, dataInicial, dataFinal);
+        return valor;
+    }
 }
