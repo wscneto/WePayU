@@ -63,4 +63,16 @@ public class Empregado implements Serializable{
     public void setVendas(List<Venda> vendas) { this.vendas = vendas; }
 
     public void adicionarVenda(Venda v) { vendas.add(v); }
+
+    public String getIdSindicato() { return idSindicato; }
+    public void setIdSindicato(String idSindicato) { this.idSindicato = idSindicato; }
+
+    public double getTaxaSindical() { return taxaSindical; }
+    public void setTaxaSindical(double taxaSindical) { this.taxaSindical = taxaSindical; }
+
+    public List<TaxaServico> getTaxasServico() { return taxasServico; }
+    public void setTaxasServico(List<TaxaServico> taxas) { this.taxasServico = taxas; }
+
+    public void adicionarTaxaServico(TaxaServico t) { taxasServico.add(t); }
+    public void limparTaxasServico() { taxasServico.clear(); }
 }

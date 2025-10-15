@@ -77,4 +77,21 @@ public class Facade {
         String valor = sistema.getVendasRealizadas(id, dataInicial, dataFinal);
         return valor;
     }
+
+    public void lancaTaxaServico(String membro, String data, String valorStr) throws Exception {
+        sistema.lancaTaxaServico(membro, data, valorStr);
+    }
+
+    public String getTaxasServico(String empId, String dataInicial, String dataFinal) throws Exception {
+        String valor = sistema.getTaxasServico(empId, dataInicial, dataFinal);
+        return valor;
+    }
+
+    public void alteraEmpregado(String id, String atributo, String valor, String idSindicato, String taxaSindicalStr) throws Exception {
+        sistema.alteraEmpregado(id, atributo, valor, idSindicato, taxaSindicalStr);
+    }
+
+    public void alteraEmpregado(String id, String atributo, String valor) throws Exception {
+        sistema.alteraEmpregado(id, atributo, valor);
+    }
 }

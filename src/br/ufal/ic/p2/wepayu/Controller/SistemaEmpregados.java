@@ -4,6 +4,7 @@ import br.ufal.ic.p2.wepayu.RepositorioEmpregados;
 import br.ufal.ic.p2.wepayu.Exception.*;
 import br.ufal.ic.p2.wepayu.models.CartaoPonto;
 import br.ufal.ic.p2.wepayu.models.Empregado;
+import br.ufal.ic.p2.wepayu.models.TaxaServico;
 import br.ufal.ic.p2.wepayu.models.Venda;
 import br.ufal.ic.p2.wepayu.util.Conversor;
 
@@ -269,5 +270,158 @@ public class SistemaEmpregados {
         }
 
         return String.format(Locale.US, "%.2f", total).replace('.', ',');
+    }
+
+    // *********************************************
+    // LANCAR TAXA DE SERVIÇO
+    // *********************************************
+    public void lancaTaxaServico(String membro, String data, String valorStr) throws Exception {
+        if (membro == null || membro.trim().isEmpty())
+            throw new IdentificacaoDoMembroNulaException();
+
+        Empregado e = null;
+        for (Empregado emp : repo.getEmpregados()) {
+            if (membro.equals(emp.getIdSindicato())) {
+                e = emp;
+                break;
+            }
+        }
+        if (e == null) throw new MembroNaoExisteException();
+
+        LocalDate dataLida;
+        try {
+            DateTimeFormatter f = DateTimeFormatter.ofPattern("d/M/yyyy");
+            dataLida = LocalDate.parse(data, f);
+        } catch (Exception ex) {
+            throw new DataInvalidaException();
+        }
+
+        double valor;
+        try {
+            valor = Conversor.parseDouble(valorStr);
+        } catch (NumberFormatException ex) {
+            throw new ValorNaoNumericoException();
+        }
+
+        if (valor <= 0) throw new ValorDeveSerPositivoException();
+
+        e.adicionarTaxaServico(new TaxaServico(membro, dataLida, valor));
+        repo.salvar();
+    }
+
+    // *********************************************
+    // CONSULTAR TAXAS DE SERVIÇO
+    // *********************************************
+    public String getTaxasServico(String empId, String dataInicial, String dataFinal) throws Exception {
+        if (empId == null || empId.trim().isEmpty()) throw new IdentificacaoNulaException();
+
+        Empregado e = getEmpregadoPorId(empId);
+        if (!e.getSindicalizado()) throw new EmpregadoNaoEhSindicalizadoException();
+
+        LocalDate ini = parseData(dataInicial, true);
+        LocalDate fim = parseData(dataFinal, false);
+
+        if (ini.isAfter(fim)) throw new DataInicialPosteriorException();
+
+        double soma = 0.0;
+        for (TaxaServico t : e.getTaxasServico()) {
+            LocalDate data = LocalDate.of(t.getAno(), t.getMes(), t.getDia());;
+            if ((data.isEqual(ini) || data.isAfter(ini)) &&
+                data.isBefore(fim)) {
+                soma += t.getValor();
+            }
+        }
+
+        return String.format(Locale.US, "%.2f", soma).replace('.', ',');
+    }
+
+    // *********************************************
+    // ALTERA EMPREGADO
+    // *********************************************
+    public void alteraEmpregado(String id, String atributo, String valor, String idSindicato, String taxaSindicalStr) throws Exception {
+        if (id == null || id.trim().isEmpty()) throw new IdentificacaoNulaException();
+
+        Empregado e = getEmpregadoPorId(id);
+
+        if (atributo == null || atributo.trim().isEmpty()) throw new AtributoNaoExisteException();
+
+        // tratamos o atributo sindicalizado (requisito do teste)
+        if (atributo.equals("sindicalizado")) {
+            if (valor == null || valor.trim().isEmpty()) throw new IllegalArgumentException();
+
+            boolean novoValor = Boolean.parseBoolean(valor);
+
+            if (novoValor) {
+                // precisamos de idSindicato e taxaSindicalStr
+                if (idSindicato == null || idSindicato.trim().isEmpty()) throw new IdentificacaoDoMembroNulaException();
+
+                // Verificar se já existe outro empregado com o mesmo idSindicato
+                for (Empregado outro : repo.getEmpregados()) {
+                    if (outro.getId() == null) continue;
+                    if (outro.getId().equals(e.getId())) continue;
+                    String idS = outro.getIdSindicato();
+                    if (idS != null && idS.equals(idSindicato)) {
+                        throw new OutroEmpregadoComIdSindicatoException();
+                    }
+                }
+
+                // parse da taxa sindical
+                double taxa = 0.0;
+                try {
+                    taxa = Conversor.parseDouble(taxaSindicalStr);
+                } catch (NumberFormatException ex) {
+                    throw new Exception("Taxa sindical nao numerica."); // caso não esperado nos testes
+                }
+
+                // aplicar alterações
+                e.setSindicalizado(true);
+                e.setIdSindicato(idSindicato);
+                e.setTaxaSindical(taxa);
+                // taxa de serviço anterior se mantém (não removemos)
+            } else {
+                // remover filiação sindical: limpa campos relacionados
+                e.setSindicalizado(false);
+                e.setIdSindicato(null);
+                e.setTaxaSindical(0.0);
+                e.limparTaxasServico();
+            }
+
+            repo.salvar();
+            return;
+        }
+
+        // Caso seja outro atributo (opcional - não necessário pro US5)
+        // Você pode implementar alterações para "nome", "endereco", "tipo", "salario", "comissao" aqui.
+        throw new AtributoNaoExisteException();
+    }
+
+    public void alteraEmpregado(String id, String atributo, String valor) throws Exception {
+        if (id == null || id.trim().isEmpty()) throw new IdentificacaoNulaException();
+
+        Empregado e = getEmpregadoPorId(id);
+
+        if (atributo == null || atributo.trim().isEmpty()) throw new AtributoNaoExisteException();
+
+        // tratamos o atributo sindicalizado (requisito do teste)
+        if (atributo.equals("sindicalizado")) {
+            if (valor == null || valor.trim().isEmpty()) throw new IllegalArgumentException();
+
+            boolean novoValor = Boolean.parseBoolean(valor);
+
+            if (!novoValor) {
+                // aplicar alterações
+                e.setSindicalizado(false);
+                e.setIdSindicato(null);
+                e.setTaxaSindical(0.0);
+                e.limparTaxasServico();
+            }
+
+            repo.salvar();
+            return;
+        }
+
+        // Caso seja outro atributo (opcional - não necessário pro US5)
+        // Você pode implementar alterações para "nome", "endereco", "tipo", "salario", "comissao" aqui.
+        throw new AtributoNaoExisteException();
     }
 }
