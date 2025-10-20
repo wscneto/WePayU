@@ -87,8 +87,16 @@ public class Facade {
         return valor;
     }
 
+    public void alteraEmpregado(String id, String atributo, String valor, String banco, String agencia, String contaCorrente) throws Exception {
+        sistema.alteraEmpregado(id, atributo, valor, banco, agencia, contaCorrente);
+    }
+
     public void alteraEmpregado(String id, String atributo, String valor, String idSindicato, String taxaSindicalStr) throws Exception {
         sistema.alteraEmpregado(id, atributo, valor, idSindicato, taxaSindicalStr);
+    }
+
+    public void alteraEmpregado(String id, String atributo, String valor1, String valor2) throws Exception {
+        sistema.alteraEmpregado(id, atributo, valor1, valor2);
     }
 
     public void alteraEmpregado(String id, String atributo, String valor) throws Exception {

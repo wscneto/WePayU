@@ -14,6 +14,10 @@ public class Empregado implements Serializable{
     private double salario;
     private double comissao;
     private boolean sindicalizado = false;
+    private String metodoPagamento = "emMaos";
+    private String banco = "";
+    private String agencia = "";
+    private String contaCorrente = "";
     private List<CartaoPonto> cartoes = new ArrayList<>();
     private List<Venda> vendas = new ArrayList<>();
     private String idSindicato;
@@ -75,4 +79,16 @@ public class Empregado implements Serializable{
 
     public void adicionarTaxaServico(TaxaServico t) { taxasServico.add(t); }
     public void limparTaxasServico() { taxasServico.clear(); }
+
+    public String getMetodoPagamento() { return metodoPagamento; }
+    public void setMetodoPagamento(String metodoPagamento) { this.metodoPagamento = metodoPagamento; }
+
+    public String getBanco() { return banco; }
+    public void setBanco(String banco) { this.banco = banco; }
+
+    public String getAgencia() { return agencia; }
+    public void setAgencia(String agencia) { this.agencia = agencia; }
+
+    public String getContaCorrente() { return contaCorrente; }
+    public void setContaCorrente(String contaCorrente) { this.contaCorrente = contaCorrente; }
 }

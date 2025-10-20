@@ -41,9 +41,33 @@ public class SistemaEmpregados {
         else if (atributo.equals("tipo")) return e.getTipo();
         else if (atributo.equals("salario"))
             return String.format("%.2f", e.getSalario()).replace('.', ',');
-        else if (atributo.equals("comissao"))
-            return String.format("%.2f", e.getComissao()).replace('.', ',');
+        else if (atributo.equals("comissao")) {
+            if (e.getTipo().equals("comissionado"))
+                return String.format("%.2f", e.getComissao()).replace('.', ',');
+            else throw new EmpregadoNaoEhComissionadoException();
+        }
         else if (atributo.equals("sindicalizado")) return String.valueOf(e.getSindicalizado());
+        else if (atributo.equals("metodoPagamento")) return e.getMetodoPagamento();
+        else if (atributo.equals("banco")) {
+            if (!e.getMetodoPagamento().equals("banco")) throw new EmpregadoNaoRecebeEmBancoException();
+            else return e.getBanco();
+        }
+        else if (atributo.equals("agencia")) {
+            if (!e.getMetodoPagamento().equals("banco")) throw new EmpregadoNaoRecebeEmBancoException();
+            else return e.getAgencia();
+        }
+        else if (atributo.equals("contaCorrente")) {
+            if (!e.getMetodoPagamento().equals("banco")) throw new EmpregadoNaoRecebeEmBancoException();
+            else return e.getContaCorrente();
+        }
+        else if (atributo.equals("idSindicato")) {
+            if (!e.getSindicalizado()) throw new EmpregadoNaoEhSindicalizadoException();
+            else return e.getIdSindicato();
+        }
+        else if (atributo.equals("taxaSindical")) {
+            if (!e.getSindicalizado()) throw new EmpregadoNaoEhSindicalizadoException();
+            else return String.format("%.2f", e.getTaxaSindical()).replace('.', ',');
+        }
         else throw new AtributoNaoExisteException();
     }
 
@@ -62,7 +86,8 @@ public class SistemaEmpregados {
         // Validações básicas
         if (nome == null || nome.trim().isEmpty()) throw new NomeNuloException();
         if (endereco == null || endereco.trim().isEmpty()) throw new EnderecoNuloException();
-        if (!tipo.equals("horista") && !tipo.equals("assalariado") && !tipo.equals("comissionado")) throw new TipoInvalidoException();
+        if (!tipo.equals("horista") && !tipo.equals("assalariado") && !tipo.equals("comissionado"))
+            throw new TipoInvalidoException();
 
         double salario = 0;
         if (salarioStr == null || salarioStr.trim().isEmpty()) throw new SalarioNuloException();
@@ -338,6 +363,31 @@ public class SistemaEmpregados {
     // *********************************************
     // ALTERA EMPREGADO
     // *********************************************
+    public void alteraEmpregado(String id, String atributo, String valor, String banco, String agencia, String contaCorrente) throws Exception {
+        if (id == null || id.trim().isEmpty()) throw new IdentificacaoNulaException();
+
+        Empregado e = getEmpregadoPorId(id);
+
+        if (atributo == null || atributo.trim().isEmpty()) throw new AtributoNaoExisteException();
+
+        if (atributo.equals("metodoPagamento")) {
+            if (valor == null || valor.trim().isEmpty()) throw new MetodoPagamentoInvalido();
+            if (banco == null || banco.trim().isEmpty()) throw new BancoNaoPodeSerNuloException();
+            if (agencia == null || agencia.trim().isEmpty()) throw new AgenciaNaoPodeSerNuloException();
+            if (contaCorrente == null || contaCorrente.trim().isEmpty()) throw new ContaCorrenteNaoPodeSerNuloException();
+
+            e.setMetodoPagamento(valor);
+            e.setBanco(banco);
+            e.setAgencia(agencia);
+            e.setContaCorrente(contaCorrente);
+
+            repo.salvar();
+            return;
+        }
+
+        throw new MetodoPagamentoInvalido();
+    }
+
     public void alteraEmpregado(String id, String atributo, String valor, String idSindicato, String taxaSindicalStr) throws Exception {
         if (id == null || id.trim().isEmpty()) throw new IdentificacaoNulaException();
 
@@ -353,7 +403,8 @@ public class SistemaEmpregados {
 
             if (novoValor) {
                 // precisamos de idSindicato e taxaSindicalStr
-                if (idSindicato == null || idSindicato.trim().isEmpty()) throw new IdentificacaoDoMembroNulaException();
+                if (idSindicato == null || idSindicato.trim().isEmpty()) throw new IdentificacaoDoSindicatoNulaException();
+                if (taxaSindicalStr == null || taxaSindicalStr.trim().isEmpty()) throw new TaxaSindicalNulaException();
 
                 // Verificar se já existe outro empregado com o mesmo idSindicato
                 for (Empregado outro : repo.getEmpregados()) {
@@ -369,8 +420,9 @@ public class SistemaEmpregados {
                 double taxa = 0.0;
                 try {
                     taxa = Conversor.parseDouble(taxaSindicalStr);
+                    if(taxa < 0) throw new TaxaSindicalNegativaException();
                 } catch (NumberFormatException ex) {
-                    throw new Exception("Taxa sindical nao numerica."); // caso não esperado nos testes
+                    throw new TaxaSindicalNaoNumericaException();
                 }
 
                 // aplicar alterações
@@ -390,9 +442,47 @@ public class SistemaEmpregados {
             return;
         }
 
-        // Caso seja outro atributo (opcional - não necessário pro US5)
-        // Você pode implementar alterações para "nome", "endereco", "tipo", "salario", "comissao" aqui.
+        // Caso seja outro atributo
         throw new AtributoNaoExisteException();
+    }
+
+    public void alteraEmpregado(String id, String atributo, String valor1, String valor2) throws Exception {
+        if (id == null || id.trim().isEmpty()) throw new IdentificacaoNulaException();
+
+        Empregado e = getEmpregadoPorId(id);
+
+        if (atributo == null || atributo.trim().isEmpty()) throw new AtributoNaoExisteException();
+
+        if (atributo.equals("tipo")) {
+            if (!valor1.equals("assalariado") && !valor1.equals("comissionado") && !valor1.equals("horista"))
+                throw new TipoInvalidoException();
+            
+            double comissaoOuSalario = 0;
+            if (valor1.equals("comissionado")) {
+                if (valor2 == null || valor2.trim().isEmpty()) throw new ComissaoNulaException();
+                try {
+                    comissaoOuSalario = Conversor.parseDouble(valor2);
+                    if (comissaoOuSalario < 0) throw new ComissaoNegativaException();
+                } catch (NumberFormatException ex) {
+                    throw new ComissaoNaoNumericaException();
+                }
+                e.setComissao(comissaoOuSalario);
+            } else if (valor1.equals("horista")) {
+                if (valor2 == null || valor2.trim().isEmpty()) throw new SalarioNuloException();
+                try {
+                    comissaoOuSalario = Conversor.parseDouble(valor2);
+                    if (comissaoOuSalario < 0) throw new SalarioNegativoException();
+                } catch (NumberFormatException ex) {
+                    throw new SalarioNaoNumericoException();
+                }
+                e.setSalario(comissaoOuSalario);
+            }
+
+            e.setTipo(valor1);
+
+            repo.salvar();
+            return;
+        }
     }
 
     public void alteraEmpregado(String id, String atributo, String valor) throws Exception {
@@ -402,9 +492,12 @@ public class SistemaEmpregados {
 
         if (atributo == null || atributo.trim().isEmpty()) throw new AtributoNaoExisteException();
 
-        // tratamos o atributo sindicalizado (requisito do teste)
+        // ATRIBUTO: sindicalizado
         if (atributo.equals("sindicalizado")) {
-            if (valor == null || valor.trim().isEmpty()) throw new IllegalArgumentException();
+            if (valor == null || valor.trim().isEmpty()) throw new ValorDeveSerTrueOuFalseException();
+
+            if (!valor.equalsIgnoreCase("true") && !valor.equalsIgnoreCase("false"))
+                throw new ValorDeveSerTrueOuFalseException();
 
             boolean novoValor = Boolean.parseBoolean(valor);
 
@@ -419,9 +512,82 @@ public class SistemaEmpregados {
             repo.salvar();
             return;
         }
+        // ATRIBUTO: nome
+        else if (atributo.equals("nome")) {
+            if (valor == null || valor.trim().isEmpty()) throw new NomeNuloException();
 
-        // Caso seja outro atributo (opcional - não necessário pro US5)
-        // Você pode implementar alterações para "nome", "endereco", "tipo", "salario", "comissao" aqui.
+            e.setNome(valor);
+
+            repo.salvar();
+            return;
+        }
+        // ATRIBUTO: endereço
+        else if (atributo.equals("endereco")) {
+            if (valor == null || valor.trim().isEmpty()) throw new EnderecoNuloException();
+
+            e.setEndereco(valor);
+
+            repo.salvar();
+            return;
+        }
+        // ATRIBUTO: metodoPagamento
+        else if (atributo.equals("metodoPagamento")) {
+            if (!valor.equals("emMaos") && !valor.equals("banco") && !valor.equals("correios"))
+                throw new MetodoPagamentoInvalido();
+
+            e.setMetodoPagamento(valor);
+
+            repo.salvar();
+            return;
+        }
+        // ATRIBUTO: tipo
+        else if (atributo.equals("tipo")) {
+            if (!valor.equals("assalariado") && !valor.equals("comissionado") && !valor.equals("horista"))
+                throw new TipoInvalidoException();
+
+            e.setTipo(valor);
+
+            repo.salvar();
+            return;
+        }
+        // ATRIBUTO: salario
+        else if (atributo.equals("salario")) {
+            String salarioStr = valor;
+            double salario = 0;
+            if (salarioStr == null || salarioStr.trim().isEmpty()) throw new SalarioNuloException();
+            try {
+                salario = Conversor.parseDouble(salarioStr);
+                if (salario < 0) throw new SalarioNegativoException();
+            } catch (NumberFormatException ex) {
+                throw new SalarioNaoNumericoException();
+            }
+
+            e.setSalario(salario);
+            
+            repo.salvar();
+            return;
+        }
+        // ATRIBUTO: comissao
+        else if (atributo.equals("comissao")) {
+            String comissaoStr = valor;
+            double comissao = 0;
+            if (e.getTipo().equals("comissionado")) {
+                if (comissaoStr == null || comissaoStr.trim().isEmpty()) throw new ComissaoNulaException();
+                try {
+                    comissao = Conversor.parseDouble(comissaoStr);
+                    if (comissao < 0) throw new ComissaoNegativaException();
+                } catch (NumberFormatException ex) {
+                    throw new ComissaoNaoNumericaException();
+                }
+            } else throw new EmpregadoNaoEhComissionadoException();
+
+            e.setComissao(comissao);
+
+            repo.salvar();
+            return;
+        }
+
+        // Caso seja outro atributo
         throw new AtributoNaoExisteException();
     }
 }
