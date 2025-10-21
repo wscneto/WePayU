@@ -1,7 +1,7 @@
 package br.ufal.ic.p2.wepayu.Exception;
 
-public class ComissaoNegativaException extends Exception{
-    public ComissaoNegativaException(){
-        super("Comissao deve ser nao-negativa.");
+public class ComissaoNegativaException extends RuntimeException {
+    public ComissaoNegativaException(String msg) {
+        super(msg);
     }
 }

@@ -1,94 +1,105 @@
 package br.ufal.ic.p2.wepayu.models;
 
-import br.ufal.ic.p2.wepayu.Exception.EmpregadoNaoExisteException;
-import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.List;
-import br.ufal.ic.p2.wepayu.models.*;
 
-public class Empregado implements Serializable{
-    private String id;
+public abstract class Empregado {
+    private String Id;
     private String nome;
     private String endereco;
-    private String tipo;
-    private double salario;
-    private double comissao;
-    private boolean sindicalizado = false;
-    private String metodoPagamento = "emMaos";
-    private String banco = "";
-    private String agencia = "";
-    private String contaCorrente = "";
-    private List<CartaoPonto> cartoes = new ArrayList<>();
-    private List<Venda> vendas = new ArrayList<>();
-    private String idSindicato;
-    private double taxaSindical;
-    private List<TaxaServico> taxasServico = new ArrayList<>();
+    private MembroSindicato sindicato;
+    private MetodoPagamento metodoPagamento = new EmMaos();
+    private AgendaPag agendaPagamento;
 
     public Empregado() {
-        this.cartoes = new ArrayList<>();
     }
 
-    public Empregado(String id, String nome, String endereco, String tipo, double salario, double comissao) throws EmpregadoNaoExisteException {
-        this.id = id;
+    public Empregado(String nome, String endereco) {
+        setNome(nome);
+        setEndereco(endereco);
+        this.agendaPagamento = new AgendaPag();
+    }
+
+    public final String getNome() {
+        return nome;
+    }
+
+    public final void setNome(String nome) {
         this.nome = nome;
-        this.endereco = endereco;
-        this.tipo = tipo;
-        this.salario = salario;
-        this.comissao = comissao;
     }
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    public final String getEndereco() {
+        return endereco;
+    }
 
-    public String getNome() { return nome; }
-    public void setNome(String nome) { this.nome = nome; }
+    public final void setEndereco(String endereco) {
+        this.endereco = endereco;
+    }
 
-    public String getEndereco() { return endereco; }
-    public void setEndereco(String endereco) { this.endereco = endereco; }
+    public abstract String getTipo();
 
-    public String getTipo() { return tipo; }
-    public void setTipo(String tipo) { this.tipo = tipo; }
+    public abstract String getSalario();
 
-    public double getSalario() { return salario; }
-    public void setSalario(double salario) { this.salario = salario; }
+    public final String ehSindicalizado() {
+        if (sindicato == null) {
+            return "false";
+        }
+        return "true";
+    }
 
-    public double getComissao() { return comissao; }
-    public void setComissao(double comissao) { this.comissao = comissao; }
+    public void setTaxaDeComissao(double taxaDeComissao) {
+    }
 
-    public boolean getSindicalizado() { return sindicalizado; }
-    public void setSindicalizado (boolean sindicalizado) { this.sindicalizado = sindicalizado; }
+    public double getTaxaDeComissao() {
+        return 0;
+    }
 
-    public List<CartaoPonto> getCartoes() { return cartoes; }
-    public void setCartoes(List<CartaoPonto> cartoes) { this.cartoes = cartoes; }
-    
-    public void adicionarCartao(CartaoPonto c) { cartoes.add(c); }
+    public MetodoPagamento getMetodoPagamento() {
+        return metodoPagamento;
+    }
 
-    public List<Venda> getVendas() { return vendas; }
-    public void setVendas(List<Venda> vendas) { this.vendas = vendas; }
+    public void setMetodoPagamento(MetodoPagamento metodoPagamento) {
+        this.metodoPagamento = metodoPagamento;
+    }
 
-    public void adicionarVenda(Venda v) { vendas.add(v); }
+    public ArrayList<CartaoPonto> getCartoes() {
+        return null;
+    }
 
-    public String getIdSindicato() { return idSindicato; }
-    public void setIdSindicato(String idSindicato) { this.idSindicato = idSindicato; }
+    public ArrayList<ResultadoDeVenda> getResultadoDeVenda() {
+        return null;
+    }
 
-    public double getTaxaSindical() { return taxaSindical; }
-    public void setTaxaSindical(double taxaSindical) { this.taxaSindical = taxaSindical; }
+    public final String getId() {
+        return Id;
+    }
 
-    public List<TaxaServico> getTaxasServico() { return taxasServico; }
-    public void setTaxasServico(List<TaxaServico> taxas) { this.taxasServico = taxas; }
+    public final void setId(String Id) {
+        this.Id = Id;
+    }
 
-    public void adicionarTaxaServico(TaxaServico t) { taxasServico.add(t); }
-    public void limparTaxasServico() { taxasServico.clear(); }
+    public void lancarCartao(CartaoPonto cartao) {
+    }
 
-    public String getMetodoPagamento() { return metodoPagamento; }
-    public void setMetodoPagamento(String metodoPagamento) { this.metodoPagamento = metodoPagamento; }
+    public void lancarResultadoDeVenda(ResultadoDeVenda resultadoDeVenda) {
+    }
 
-    public String getBanco() { return banco; }
-    public void setBanco(String banco) { this.banco = banco; }
+    public final MembroSindicato getSindicato() {
+        return sindicato;
+    }
 
-    public String getAgencia() { return agencia; }
-    public void setAgencia(String agencia) { this.agencia = agencia; }
+    public final void setSindicato(MembroSindicato sindicato) {
+        this.sindicato = sindicato;
+    }
 
-    public String getContaCorrente() { return contaCorrente; }
-    public void setContaCorrente(String contaCorrente) { this.contaCorrente = contaCorrente; }
+    public final AgendaPag getAgendaPagamento() {
+        return agendaPagamento;
+    }
+
+    public final void setAgendaPagamento(AgendaPag agendaPagamento) {
+        this.agendaPagamento = agendaPagamento;
+    }
+
+    public final void setAgendaPagamento(String agenda) {
+        this.agendaPagamento = new AgendaPag(agenda);
+    }
 }

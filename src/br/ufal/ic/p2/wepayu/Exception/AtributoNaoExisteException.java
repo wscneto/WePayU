@@ -1,7 +1,7 @@
 package br.ufal.ic.p2.wepayu.Exception;
 
-public class AtributoNaoExisteException extends Exception{
-    public AtributoNaoExisteException(){
-        super("Atributo nao existe.");
+public class AtributoNaoExisteException extends RuntimeException {
+    public AtributoNaoExisteException(String msg) {
+        super(msg);
     }
 }

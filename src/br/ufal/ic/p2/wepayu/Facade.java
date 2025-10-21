@@ -1,105 +1,218 @@
 package br.ufal.ic.p2.wepayu;
 
-import br.ufal.ic.p2.wepayu.Controller.SistemaEmpregados;
+import br.ufal.ic.p2.wepayu.services.*;
+import br.ufal.ic.p2.wepayu.models.*;
 import br.ufal.ic.p2.wepayu.Exception.*;
-import br.ufal.ic.p2.wepayu.models.Empregado;
+import br.ufal.ic.p2.wepayu.cmds.*;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 public class Facade {
-    private SistemaEmpregados sistema;
+
+    private final EmpregadoService empService;
+    private final SindicatoService sindService;
+    private final LancaCartaoService lancService;
+    private final FolhaPagamentoService folhaPagService;
+    private final ArmazenamentoService persistenceService;
+    private final Map<String, Empregado> emps;
+    private final Map<String, MembroSindicato> membsSind;
+    private int id;
+    private final CmdManager cm;
+    private boolean sistemaEncerrado = false;
 
     public Facade() {
-        sistema = new SistemaEmpregados();
+        this.emps = new HashMap<>();
+        this.membsSind = new HashMap<>();
+        this.id = 0;
+        this.cm = new CmdManager();
+        this.empService = new EmpregadoService(emps, membsSind, id, cm);
+        this.sindService = new SindicatoService(membsSind, emps, cm);
+        this.lancService = new LancaCartaoService(emps, cm);
+        this.folhaPagService = new FolhaPagamentoService(emps, membsSind);
+        this.persistenceService = new ArmazenamentoService(emps, membsSind, id);
+        this.persistenceService.carregarSistema();
+    }
+
+    /*
+     * ARMAZENAMENTO
+     */
+
+    public void salvarSistema() {
+        persistenceService.salvarSistema();
+    }
+
+    public void carregarSistema() {
+        persistenceService.carregarSistema();
+    }
+
+    public void zerarSistema() {
+        ZerarSistemaCmd command = new ZerarSistemaCmd(emps, membsSind);
+        cm.exec(command);
     }
 
     public void encerrarSistema() {
-        sistema = new SistemaEmpregados();
-    }
-    
-    public void zerarSistema() {
-        File empregadosFile = new File("data/empregados.xml");
-        empregadosFile.delete();
-        sistema = new SistemaEmpregados();
+        persistenceService.encerrarSistema();
+        sistemaEncerrado = true;
     }
 
-    public String getAtributoEmpregado(String id, String atributo) throws Exception {
-        return sistema.getAtributoEmpregado(id, atributo);
+    /*
+     * CRIAÇÃO / ALTERAÇÃO / REMOÇÃO DE EMPREGADOS
+     */
+
+    public String criarEmpregado(String nome, String endereco, String tipo, String salario)
+            throws Exception, RuntimeException {
+        String id = empService.criarEmpregado(nome, endereco, tipo, salario);
+        salvarSistema();
+        return id;
     }
 
-    public String criarEmpregado(String nome, String endereco, String tipo, String salarioStr) throws Exception {
-        return sistema.criarEmpregado(nome, endereco, tipo, salarioStr);
+    public String criarEmpregado(String nome, String endereco, String tipo, String salario, String comissao)
+            throws Exception {
+        String id = empService.criarEmpregado(nome, endereco, tipo, salario, comissao);
+        salvarSistema();
+        return id;
     }
 
-    public void removerEmpregado(String id) throws Exception {
-        sistema.removerEmpregado(id);
+    public void alteraEmpregado(String emp, String atributo, String valor)
+            throws Exception {
+        empService.alteraEmpregado(emp, atributo, valor);
+        salvarSistema();
     }
 
-    public String criarEmpregado(String nome, String endereco, String tipo, String salarioStr, String comissaoStr) throws Exception {
-        return sistema.criarEmpregado(nome, endereco, tipo, salarioStr, comissaoStr);
+    public void alteraEmpregado(String emp, String atributo, String valor, String comissao_salario)
+            throws Exception {
+        empService.alteraEmpregado(emp, atributo, valor, comissao_salario);
+        salvarSistema();
     }
 
-    public Empregado getEmpregadoPorId(String id) throws Exception {
-        return sistema.getEmpregadoPorId(id);
+    public void alteraEmpregado(String emp, String atributo, String valor1, String banco, String agencia,
+            String contaCorrente)
+            throws Exception {
+        empService.alteraEmpregado(emp, atributo, valor1, banco, agencia, contaCorrente);
+        salvarSistema();
     }
 
-    public String getEmpregadoPorNome(String nome, int indice) throws Exception {
-        return sistema.getEmpregadoPorNome(nome, indice).getId();
+    public void alteraEmpregado(String emp, String atributo, String valor, String idSindicato, String taxaSindical)
+            throws Exception {
+        empService.alteraEmpregado(emp, atributo, valor, idSindicato, taxaSindical);
+        salvarSistema();
     }
 
-    public List<Empregado> getTodosEmpregados() {
-        return sistema.getTodosEmpregados();
+    public void alteraEmpregado(String emp, String atributo, String valor1, String banco, String agencia,
+            String contaCorrente, String comissao)
+            throws Exception {
+        empService.alteraEmpregado(emp, atributo, valor1, banco, agencia, contaCorrente, comissao);
+        salvarSistema();
     }
 
-    public void lancaCartao(String id, String data, String horas) throws Exception {
-        sistema.lancaCartao(id, data, horas);
+    public void removerEmpregado(String emp)
+            throws Exception, RuntimeException {
+        empService.removerEmpregado(emp);
+        salvarSistema();
     }
 
-    public String getHorasNormaisTrabalhadas(String emp, String dataInicial, String dataFinal) throws Exception {
-        String valor = sistema.getHorasNormaisTrabalhadas(emp, dataInicial, dataFinal);
-        return valor;
+    public String getEmpregadoPorNome(String emp, String indice)
+            throws Exception, RuntimeException {
+        return empService.getEmpregadoPorNome(emp, indice);
     }
 
-    public String getHorasExtrasTrabalhadas(String emp, String dataInicial, String dataFinal) throws Exception {
-        String valor = sistema.getHorasExtrasTrabalhadas(emp, dataInicial, dataFinal);
-        return valor;
+    public String getAtributoEmpregado(String emp, String atributo)
+            throws Exception, RuntimeException {
+        return empService.getAtributoEmpregado(emp, atributo);
     }
 
-    public void lancaVenda(String id, String data, String valor) throws Exception {
-        sistema.lancaVenda(id, data, valor);
+    public int getNumeroDeEmpregados() {
+        return emps.size();
     }
 
-    public String getVendasRealizadas(String id, String dataInicial, String dataFinal) throws Exception {
-        String valor = sistema.getVendasRealizadas(id, dataInicial, dataFinal);
-        return valor;
+    /*
+     * SINDICATO
+     */
+
+    public MembroSindicato criarMembro(String id, String taxa)
+            throws Exception {
+        MembroSindicato membro = sindService.criarMembro(id, taxa);
+        salvarSistema();
+        return membro;
     }
 
-    public void lancaTaxaServico(String membro, String data, String valorStr) throws Exception {
-        sistema.lancaTaxaServico(membro, data, valorStr);
+    public void lancaTaxaServico(String membro, String data, String valor)
+            throws Exception {
+        sindService.lancaTaxaServico(membro, data, valor);
+        salvarSistema();
     }
 
-    public String getTaxasServico(String empId, String dataInicial, String dataFinal) throws Exception {
-        String valor = sistema.getTaxasServico(empId, dataInicial, dataFinal);
-        return valor;
+    public String getTaxasServico(String empregado, String dataInicial, String dataFinal)
+            throws Exception, RuntimeException {
+        return sindService.getTaxasServico(empregado, dataInicial, dataFinal);
     }
 
-    public void alteraEmpregado(String id, String atributo, String valor, String banco, String agencia, String contaCorrente) throws Exception {
-        sistema.alteraEmpregado(id, atributo, valor, banco, agencia, contaCorrente);
+    /*
+     * LANÇA CARTÃO
+     */
+
+    public void lancaCartao(String emp, String data, String horas)
+            throws Exception {
+        lancService.lancaCartao(emp, data, horas);
+        salvarSistema();
     }
 
-    public void alteraEmpregado(String id, String atributo, String valor, String idSindicato, String taxaSindicalStr) throws Exception {
-        sistema.alteraEmpregado(id, atributo, valor, idSindicato, taxaSindicalStr);
+    public void lancaVenda(String emp, String data, String valor)
+            throws Exception {
+        lancService.lancaVenda(emp, data, valor);
+        salvarSistema();
     }
 
-    public void alteraEmpregado(String id, String atributo, String valor1, String valor2) throws Exception {
-        sistema.alteraEmpregado(id, atributo, valor1, valor2);
+    public String getHorasNormaisTrabalhadas(String emp, String dataInicial, String dataFinal)
+            throws Exception, RuntimeException {
+        return lancService.getHorasNormaisTrabalhadas(emp, dataInicial, dataFinal);
     }
 
-    public void alteraEmpregado(String id, String atributo, String valor) throws Exception {
-        sistema.alteraEmpregado(id, atributo, valor);
+    public String getHorasExtrasTrabalhadas(String emp, String dataInicial, String dataFinal)
+            throws Exception, RuntimeException {
+        return lancService.getHorasExtrasTrabalhadas(emp, dataInicial, dataFinal);
+    }
+
+    public String getVendasRealizadas(String emp, String dataInicial, String dataFinal)
+            throws Exception, RuntimeException {
+        return lancService.getVendasRealizadas(emp, dataInicial, dataFinal);
+    }
+
+    /*
+     * FOLHA DE PAGAMENTO
+     */
+
+    public String totalFolha(String data) throws DataInvalidaException {
+        return folhaPagService.totalFolha(data);
+    }
+
+    public void rodaFolha(String data, String arquivo) throws DataInvalidaException {
+        RodaFolhaCmd command = new RodaFolhaCmd(data, arquivo, folhaPagService);
+        cm.exec(command);
+    }
+
+    /*
+     * UNDO/REDO
+     */
+
+    public void undo() throws Exception {
+        if (sistemaEncerrado)
+            throw new Exception("Nao pode dar comandos depois de encerrarSistema.");
+
+        cm.undo();
+    }
+
+    public void redo() throws Exception {
+        cm.redo();
+    }
+
+    /*
+     * AGENDAS DE PAGAMENTO
+     */
+
+    public void criarAgendaDePagamentos(String descricao) throws IllegalArgumentException {
+        br.ufal.ic.p2.wepayu.models.AgendaDePags.criarAgenda(descricao);
+        salvarSistema();
     }
 }
