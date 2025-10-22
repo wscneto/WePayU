@@ -5,90 +5,94 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 
 public class AgendaPag {
-    private String agenda;
+    private String configuracao;
 
     public static final String SEMANAL_5 = "semanal 5";
     public static final String SEMANAL_2_5 = "semanal 2 5";
     public static final String MENSAL_DOLAR = "mensal $";
 
     public AgendaPag() {
-        this.agenda = SEMANAL_5;
+        this.configuracao = SEMANAL_5;
     }
 
-    public AgendaPag(String agenda) {
-        this.agenda = agenda;
+    public AgendaPag(String config) {
+        this.configuracao = config;
     }
 
     public String getAgenda() {
-        return agenda;
+        return this.configuracao;
     }
 
-    public void setAgenda(String agenda) {
-        this.agenda = agenda;
+    public void setAgenda(String config) {
+        this.configuracao = config;
     }
 
-    public static boolean isAgendaValida(String agenda) {
-        return SEMANAL_5.equals(agenda) ||
-                SEMANAL_2_5.equals(agenda) ||
-                MENSAL_DOLAR.equals(agenda) ||
-                AgendaDePags.validarAgendaExistente(agenda);
+    public static boolean isAgendaValida(String config) {
+        if (SEMANAL_5.equals(config))
+            return true;
+        if (SEMANAL_2_5.equals(config))
+            return true;
+        if (MENSAL_DOLAR.equals(config))
+            return true;
+        return AgendaDePags.validarAgendaExistente(config);
     }
 
-    public static String getAgendaPadrao(String tipo) {
-        switch (tipo) {
-            case "horista":
-                return SEMANAL_5;
-            case "assalariado":
-                return MENSAL_DOLAR;
-            case "comissionado":
-                return SEMANAL_2_5;
-            default:
-                return SEMANAL_5;
-        }
+    public static String getAgendaPadrao(String empregadoTipo) {
+        if ("horista".equals(empregadoTipo))
+            return SEMANAL_5;
+        if ("assalariado".equals(empregadoTipo))
+            return MENSAL_DOLAR;
+        if ("comissionado".equals(empregadoTipo))
+            return SEMANAL_2_5;
+        return SEMANAL_5;
     }
 
-    public boolean devePagarNaData(String data) {
+    public boolean devePagarNaData(String dataPagamento) {
         try {
-            if (SEMANAL_5.equals(agenda) || SEMANAL_2_5.equals(agenda) || MENSAL_DOLAR.equals(agenda)) {
-                return devePagarNaDataPadrao(data);
+            if (ehAgendaPadrao()) {
+                return processarDataPadrao(dataPagamento);
             } else {
-                AgendaDePags agendaCustomizada = AgendaDePags.obterAgenda(agenda);
-                if (agendaCustomizada != null) {
-                    return agendaCustomizada.verificarPagamentoData(data);
-                }
-                return false;
+                AgendaDePags agendaCustom = AgendaDePags.obterAgenda(configuracao);
+                return agendaCustom != null && agendaCustom.verificarPagamentoData(dataPagamento);
             }
         } catch (Exception e) {
             return false;
         }
     }
 
-    private boolean devePagarNaDataPadrao(String data) {
+    public double calcularValorPagamento(Empregado emp, String inicio, String fim) {
+        if (ehAgendaPadrao()) {
+            return processarPagamentoPadrao(emp, inicio, fim);
+        } else {
+            AgendaDePags agendaCustom = AgendaDePags.obterAgenda(configuracao);
+            if (agendaCustom != null)
+                return agendaCustom.computarValorPagamento(emp, inicio, fim);
+            return 0.0;
+        }
+    }
+
+    private boolean ehAgendaPadrao() {
+        return SEMANAL_5.equals(configuracao) ||
+                SEMANAL_2_5.equals(configuracao) ||
+                MENSAL_DOLAR.equals(configuracao);
+    }
+
+    private boolean processarDataPadrao(String data) {
         try {
-            String[] partes = data.split("/");
-            int dia = Integer.parseInt(partes[0]);
-            int mes = Integer.parseInt(partes[1]);
-            int ano = Integer.parseInt(partes[2]);
-
-            LocalDate localDate = LocalDate.of(ano, mes, dia);
-            DayOfWeek diaSemana = localDate.getDayOfWeek();
-
-            switch (agenda) {
+            LocalDate dataLocal = parseData(data);
+            switch (configuracao) {
                 case SEMANAL_5:
-                    return diaSemana == DayOfWeek.FRIDAY;
+                    return dataLocal.getDayOfWeek() == DayOfWeek.FRIDAY;
 
                 case SEMANAL_2_5:
                     LocalDate primeiroPagamento = LocalDate.of(2005, 1, 14);
-
-                    if (localDate.isBefore(primeiroPagamento)) {
+                    if (dataLocal.isBefore(primeiroPagamento))
                         return false;
-                    }
-
-                    long diasEntre = ChronoUnit.DAYS.between(primeiroPagamento, localDate);
-                    return diaSemana == DayOfWeek.FRIDAY && diasEntre % 14 == 0;
+                    long diferencaDias = ChronoUnit.DAYS.between(primeiroPagamento, dataLocal);
+                    return dataLocal.getDayOfWeek() == DayOfWeek.FRIDAY && diferencaDias % 14 == 0;
 
                 case MENSAL_DOLAR:
-                    return localDate.equals(localDate.withDayOfMonth(localDate.lengthOfMonth()));
+                    return dataLocal.getDayOfMonth() == dataLocal.lengthOfMonth();
 
                 default:
                     return false;
@@ -98,232 +102,120 @@ public class AgendaPag {
         }
     }
 
-    public double calcularValorPagamento(Empregado empregado, String dataInicial, String dataFinal) {
-        if (SEMANAL_5.equals(agenda) || SEMANAL_2_5.equals(agenda) || MENSAL_DOLAR.equals(agenda))
-            return calcularValorPagamentoPadrao(empregado, dataInicial, dataFinal);
-        else {
-            AgendaDePags agendaCustomizada = AgendaDePags.obterAgenda(agenda);
-            if (agendaCustomizada != null)
-                return agendaCustomizada.computarValorPagamento(empregado, dataInicial, dataFinal);
+    private double processarPagamentoPadrao(Empregado emp, String inicio, String fim) {
+        String tipoEmpregado = emp.getTipo();
 
-            return 0.0;
+        if (SEMANAL_5.equals(configuracao)) {
+            return calcularSemanal(emp, tipoEmpregado, inicio, fim);
+        } else if (SEMANAL_2_5.equals(configuracao)) {
+            return calcularBiSemanal(emp, tipoEmpregado, inicio, fim);
+        } else if (MENSAL_DOLAR.equals(configuracao)) {
+            return calcularMensal(emp, tipoEmpregado, inicio, fim);
         }
-    }
-
-    private double calcularValorPagamentoPadrao(Empregado empregado, String dataInicial, String dataFinal) {
-        String tipo = empregado.getTipo();
-
-        switch (agenda) {
-            case SEMANAL_5:
-
-                if ("horista".equals(tipo)) {
-                    return calcularPagamentoHoristaSemanal(empregado, dataInicial, dataFinal);
-                } else if ("assalariado".equals(tipo)) {
-                    return calcularPagamentoAssalariadoSemanal(empregado);
-                } else if ("comissionado".equals(tipo)) {
-                    return calcularPagamentoComissionadoSemanal(empregado, dataInicial, dataFinal);
-                }
-                break;
-
-            case SEMANAL_2_5:
-
-                if ("horista".equals(tipo)) {
-                    return calcularPagamentoHoristaBiSemanal(empregado, dataInicial, dataFinal);
-                } else if ("assalariado".equals(tipo)) {
-                    return calcularPagamentoAssalariadoBiSemanal(empregado);
-                } else if ("comissionado".equals(tipo)) {
-                    return calcularPagamentoComissionadoBiSemanal(empregado, dataInicial, dataFinal);
-                }
-                break;
-
-            case MENSAL_DOLAR:
-
-                if ("horista".equals(tipo)) {
-                    return calcularPagamentoHoristaMensal(empregado, dataInicial, dataFinal);
-                } else if ("assalariado".equals(tipo)) {
-                    return calcularPagamentoAssalariadoMensal(empregado);
-                } else if ("comissionado".equals(tipo)) {
-                    return calcularPagamentoComissionadoMensal(empregado, dataInicial, dataFinal);
-                }
-                break;
-        }
-
         return 0.0;
     }
 
-    private double calcularPagamentoHoristaSemanal(Empregado empregado, String dataInicial, String dataFinal) {
-        if (!(empregado instanceof Horista))
+    private double calcularSemanal(Empregado emp, String tipo, String inicio, String fim) {
+        switch (tipo) {
+            case "horista":
+                return calcularHorista(emp, inicio, fim);
+            case "assalariado":
+                return ((Assalariado) emp).getSalarioMensal() * 12 / 52;
+            case "comissionado":
+                Comissionado com = (Comissionado) emp;
+                return (com.getSalarioMensal() * 12 / 52) + calcularComissoesPeriodo(com, inicio, fim);
+            default:
+                return 0.0;
+        }
+    }
+
+    private double calcularBiSemanal(Empregado emp, String tipo, String inicio, String fim) {
+        switch (tipo) {
+            case "horista":
+                return calcularHorista(emp, inicio, fim);
+            case "assalariado":
+                return ((Assalariado) emp).getSalarioMensal() * 12 / 26;
+            case "comissionado":
+                Comissionado com = (Comissionado) emp;
+                return (com.getSalarioMensal() * 12 / 26) + calcularComissoesPeriodo(com, inicio, fim);
+            default:
+                return 0.0;
+        }
+    }
+
+    private double calcularMensal(Empregado emp, String tipo, String inicio, String fim) {
+        switch (tipo) {
+            case "horista":
+                return calcularHorista(emp, inicio, fim);
+            case "assalariado":
+                return ((Assalariado) emp).getSalarioMensal();
+            case "comissionado":
+                Comissionado com = (Comissionado) emp;
+                return com.getSalarioMensal() + calcularComissoesPeriodo(com, inicio, fim);
+            default:
+                return 0.0;
+        }
+    }
+
+    private double calcularHorista(Empregado emp, String inicio, String fim) {
+        if (!(emp instanceof Horista))
             return 0.0;
-
-        Horista horista = (Horista) empregado;
+        Horista horista = (Horista) emp;
         double salarioHora = horista.getSalarioPorHora();
-
-        double horasNormais = calcularHorasNormais(horista, dataInicial, dataFinal);
-        double horasExtras = calcularHorasExtras(horista, dataInicial, dataFinal);
-
+        double horasNormais = computarHorasNormais(horista, inicio, fim);
+        double horasExtras = computarHorasExtras(horista, inicio, fim);
         return (horasNormais * salarioHora) + (horasExtras * salarioHora * 1.5);
     }
 
-    private double calcularPagamentoHoristaBiSemanal(Empregado empregado, String dataInicial, String dataFinal) {
-        if (!(empregado instanceof Horista))
-            return 0.0;
-
-        Horista horista = (Horista) empregado;
-        double salarioHora = horista.getSalarioPorHora();
-
-        double horasNormais = calcularHorasNormais(horista, dataInicial, dataFinal);
-        double horasExtras = calcularHorasExtras(horista, dataInicial, dataFinal);
-
-        return (horasNormais * salarioHora) + (horasExtras * salarioHora * 1.5);
-    }
-
-    private double calcularPagamentoHoristaMensal(Empregado empregado, String dataInicial, String dataFinal) {
-        if (!(empregado instanceof Horista))
-            return 0.0;
-
-        Horista horista = (Horista) empregado;
-        double salarioHora = horista.getSalarioPorHora();
-
-        double horasNormais = calcularHorasNormais(horista, dataInicial, dataFinal);
-        double horasExtras = calcularHorasExtras(horista, dataInicial, dataFinal);
-
-        return (horasNormais * salarioHora) + (horasExtras * salarioHora * 1.5);
-    }
-
-    private double calcularPagamentoAssalariadoSemanal(Empregado empregado) {
-        if (!(empregado instanceof Assalariado))
-            return 0.0;
-
-        Assalariado assalariado = (Assalariado) empregado;
-        double salarioAnual = assalariado.getSalarioMensal() * 12;
-        return salarioAnual / 52;
-    }
-
-    private double calcularPagamentoAssalariadoBiSemanal(Empregado empregado) {
-        if (!(empregado instanceof Assalariado))
-            return 0.0;
-
-        Assalariado assalariado = (Assalariado) empregado;
-        double salarioAnual = assalariado.getSalarioMensal() * 12;
-        return salarioAnual / 26;
-    }
-
-    private double calcularPagamentoAssalariadoMensal(Empregado empregado) {
-        if (!(empregado instanceof Assalariado))
-            return 0.0;
-
-        Assalariado assalariado = (Assalariado) empregado;
-        return assalariado.getSalarioMensal();
-    }
-
-    private double calcularPagamentoComissionadoSemanal(Empregado empregado, String dataInicial, String dataFinal) {
-        if (!(empregado instanceof Comissionado))
-            return 0.0;
-
-        Comissionado comissionado = (Comissionado) empregado;
-        double salarioAnual = comissionado.getSalarioMensal() * 12;
-        double salarioSemanal = salarioAnual / 52;
-
-        double comissoes = calcularComissoes(comissionado, dataInicial, dataFinal);
-
-        return salarioSemanal + comissoes;
-    }
-
-    private double calcularPagamentoComissionadoBiSemanal(Empregado empregado, String dataInicial, String dataFinal) {
-        if (!(empregado instanceof Comissionado))
-            return 0.0;
-
-        Comissionado comissionado = (Comissionado) empregado;
-        double salarioAnual = comissionado.getSalarioMensal() * 12;
-        double salarioBiSemanal = salarioAnual / 26;
-
-        double comissoes = calcularComissoes(comissionado, dataInicial, dataFinal);
-
-        return salarioBiSemanal + comissoes;
-    }
-
-    private double calcularPagamentoComissionadoMensal(Empregado empregado, String dataInicial, String dataFinal) {
-        if (!(empregado instanceof Comissionado))
-            return 0.0;
-
-        Comissionado comissionado = (Comissionado) empregado;
-        double salarioMensal = comissionado.getSalarioMensal();
-
-        double comissoes = calcularComissoes(comissionado, dataInicial, dataFinal);
-
-        return salarioMensal + comissoes;
-    }
-
-    private double calcularHorasNormais(Horista horista, String dataInicial, String dataFinal) {
-        double totalHoras = 0.0;
-
-        for (CartaoPonto cartao : horista.getCartoes()) {
-            if (estaNoPeriodo(cartao.getData(), dataInicial, dataFinal)) {
-                double horas = cartao.getHoras();
-                if (horas <= 8) {
-                    totalHoras += horas;
-                } else {
-                    totalHoras += 8;
-                }
+    private double computarHorasNormais(Horista horista, String inicio, String fim) {
+        double total = 0.0;
+        for (CartaoPonto cp : horista.getCartoes()) {
+            if (dentroDoIntervalo(cp.getData(), inicio, fim)) {
+                total += Math.min(cp.getHoras(), 8);
             }
         }
-
-        return totalHoras;
+        return total;
     }
 
-    private double calcularHorasExtras(Horista horista, String dataInicial, String dataFinal) {
-        double totalHoras = 0.0;
-
-        for (CartaoPonto cartao : horista.getCartoes()) {
-            if (estaNoPeriodo(cartao.getData(), dataInicial, dataFinal)) {
-                double horas = cartao.getHoras();
-                if (horas > 8) {
-                    totalHoras += (horas - 8);
-                }
+    private double computarHorasExtras(Horista horista, String inicio, String fim) {
+        double total = 0.0;
+        for (CartaoPonto cp : horista.getCartoes()) {
+            if (dentroDoIntervalo(cp.getData(), inicio, fim)) {
+                double horas = cp.getHoras();
+                if (horas > 8)
+                    total += horas - 8;
             }
         }
-
-        return totalHoras;
+        return total;
     }
 
-    private double calcularComissoes(Comissionado comissionado, String dataInicial, String dataFinal) {
-        double totalComissoes = 0.0;
-        double taxaComissao = comissionado.getTaxaDeComissao();
-
-        for (ResultadoDeVenda venda : comissionado.getResultadoDeVenda()) {
-            if (estaNoPeriodo(venda.getData(), dataInicial, dataFinal)) {
-                totalComissoes += venda.getValor() * taxaComissao;
+    private double calcularComissoesPeriodo(Comissionado com, String inicio, String fim) {
+        double total = 0.0;
+        double taxa = com.getTaxaDeComissao();
+        for (ResultadoDeVenda venda : com.getResultadoDeVenda()) {
+            if (dentroDoIntervalo(venda.getData(), inicio, fim)) {
+                total += venda.getValor() * taxa;
             }
         }
-
-        return totalComissoes;
+        return total;
     }
 
-    private boolean estaNoPeriodo(String data, String dataInicial, String dataFinal) {
+    private boolean dentroDoIntervalo(String data, String inicio, String fim) {
         try {
-            String[] partesData = data.split("/");
-            String[] partesInicial = dataInicial.split("/");
-            String[] partesFinal = dataFinal.split("/");
-
-            int dia = Integer.parseInt(partesData[0]);
-            int mes = Integer.parseInt(partesData[1]);
-            int ano = Integer.parseInt(partesData[2]);
-
-            int diaInicial = Integer.parseInt(partesInicial[0]);
-            int mesInicial = Integer.parseInt(partesInicial[1]);
-            int anoInicial = Integer.parseInt(partesInicial[2]);
-
-            int diaFinal = Integer.parseInt(partesFinal[0]);
-            int mesFinal = Integer.parseInt(partesFinal[1]);
-            int anoFinal = Integer.parseInt(partesFinal[2]);
-
-            LocalDate localDate = LocalDate.of(ano, mes, dia);
-            LocalDate dataInicialLocal = LocalDate.of(anoInicial, mesInicial, diaInicial);
-            LocalDate dataFinalLocal = LocalDate.of(anoFinal, mesFinal, diaFinal);
-
-            return !localDate.isBefore(dataInicialLocal) && !localDate.isAfter(dataFinalLocal);
+            LocalDate dataRef = parseData(data);
+            LocalDate dataInicio = parseData(inicio);
+            LocalDate dataFim = parseData(fim);
+            return !dataRef.isBefore(dataInicio) && !dataRef.isAfter(dataFim);
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private LocalDate parseData(String data) {
+        String[] partes = data.split("/");
+        return LocalDate.of(
+                Integer.parseInt(partes[2]),
+                Integer.parseInt(partes[1]),
+                Integer.parseInt(partes[0]));
     }
 }

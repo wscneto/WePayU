@@ -34,7 +34,7 @@ public class LancarCartaoCmd implements Cmd {
 
             CartaoPonto cartao = new CartaoPonto(data, horas);
             horista.getCartoes().add(cartao);
-        } catch (EmpregadoNaoEncontradoException | EmpregadoNaoEhHoristaException e) {
+        } catch (Exception e) {
             throw e;
         }
     }

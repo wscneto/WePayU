@@ -6,7 +6,7 @@ import br.ufal.ic.p2.wepayu.utils.*;
 
 public class MembroSindicatoFactory {
     public static MembroSindicato criarMembro(String idMembro, String taxaSindical)
-            throws Exception, RuntimeException {
+            throws Exception {
 
         validarIdentificacaoMembro(idMembro);
         double taxaValidada = processarTaxaSindicalString(taxaSindical);
@@ -15,7 +15,7 @@ public class MembroSindicatoFactory {
     }
 
     public static MembroSindicato criarMembro(String idMembro, double taxaSindical)
-            throws Exception, RuntimeException {
+            throws Exception {
 
         validarIdentificacaoMembro(idMembro);
         double taxaValidada = processarTaxaSindicalDouble(taxaSindical);

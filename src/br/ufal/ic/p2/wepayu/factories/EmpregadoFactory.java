@@ -5,93 +5,93 @@ import br.ufal.ic.p2.wepayu.models.*;
 import br.ufal.ic.p2.wepayu.utils.*;
 
 public class EmpregadoFactory {
-    public static Empregado criarEmpregado(String tipo, String nome, String endereco, String salario)
-            throws Exception, RuntimeException {
 
-        validarSalario(salario);
-        double salarioProcessado = converterSalario(salario);
-
-        return instanciarEmpregadoBasico(tipo, nome, endereco, salarioProcessado);
+    public static Empregado criarEmpregado(String tipo, String nome, String endereco, String salario) throws Exception {
+        verificarSalarioValido(salario);
+        double valorSal = parsearSalario(salario);
+        return gerarEmpregadoBase(tipo, nome, endereco, valorSal);
     }
 
     public static Empregado criarEmpregado(String tipo, String nome, String endereco, String salario, String comissao)
-            throws Exception, RuntimeException {
+            throws Exception {
+        verificarSalarioValido(salario);
+        double valorSal = parsearSalario(salario);
 
-        validarSalario(salario);
-        double salarioProcessado = converterSalario(salario);
+        verificarComissaoValida(comissao);
+        double valorCom = parsearComissao(comissao);
 
-        validarComissao(comissao);
-        double comissaoProcessada = converterComissao(comissao);
-
-        return instanciarEmpregadoComissionado(tipo, nome, endereco, salarioProcessado, comissaoProcessada);
+        return gerarEmpregadoComissionado(tipo, nome, endereco, valorSal, valorCom);
     }
 
-    private static void validarSalario(String salario) throws Exception {
+    // =============================================================
+    // Métodos auxiliares de validação
+    // =============================================================
+
+    private static void verificarSalarioValido(String salario) throws Exception {
         if (salario == null || salario.trim().isEmpty()) {
             throw new SalarioNuloException("Salario nao pode ser nulo.");
         }
     }
 
-    private static double converterSalario(String salario) throws Exception {
-        double valorSalario;
+    private static double parsearSalario(String salario) throws Exception {
+        double valor;
         try {
-            valorSalario = Double.parseDouble(salario.replace(",", "."));
+            valor = Double.parseDouble(salario.replace(",", "."));
         } catch (NumberFormatException e) {
             throw new SalarioNaoNumericoException("Salario deve ser numerico.");
         }
 
-        if (valorSalario < 0) {
+        if (valor < 0)
             throw new SalarioNegativoException("Salario deve ser nao-negativo.");
-        }
 
-        return FormatacaoMonetariaUtil.arredondarValor(valorSalario);
+        return FormatacaoMonetariaUtil.arredondarValor(valor);
     }
 
-    private static void validarComissao(String comissao) throws Exception {
+    private static void verificarComissaoValida(String comissao) throws Exception {
         if (comissao == null || comissao.trim().isEmpty()) {
             throw new ComissaoNulaException("Comissao nao pode ser nula.");
         }
     }
 
-    private static double converterComissao(String comissao) throws Exception {
-        double valorComissao;
+    private static double parsearComissao(String comissao) throws Exception {
+        double valor;
         try {
-            valorComissao = Double.parseDouble(comissao.replace(",", "."));
+            valor = Double.parseDouble(comissao.replace(",", "."));
         } catch (NumberFormatException e) {
             throw new ComissaoNaoNumericaException("Comissao deve ser numerica.");
         }
 
-        if (valorComissao < 0) {
+        if (valor < 0)
             throw new ComissaoNegativaException("Comissao deve ser nao-negativa.");
-        }
 
-        return FormatacaoMonetariaUtil.arredondarValor(valorComissao);
+        return FormatacaoMonetariaUtil.arredondarValor(valor);
     }
 
-    private static Empregado instanciarEmpregadoBasico(String tipo, String nome, String endereco, double salario)
+    // =============================================================
+    // Métodos de instanciação
+    // =============================================================
+
+    private static Empregado gerarEmpregadoBase(String tipo, String nome, String endereco, double salario)
             throws Exception {
-        switch (tipo) {
-            case "assalariado":
-                return new Assalariado(nome, endereco, salario);
-            case "horista":
-                return new Horista(nome, endereco, salario);
-            case "comissionado":
-                throw new TipoInvalidoException("Tipo nao aplicavel.");
-            default:
-                throw new TipoInvalidoException("Tipo invalido.");
+        if ("assalariado".equals(tipo)) {
+            return new Assalariado(nome, endereco, salario);
+        } else if ("horista".equals(tipo)) {
+            return new Horista(nome, endereco, salario);
+        } else if ("comissionado".equals(tipo)) {
+            throw new TipoInvalidoException("Tipo nao aplicavel.");
+        } else {
+            throw new TipoInvalidoException("Tipo invalido.");
         }
     }
 
-    private static Empregado instanciarEmpregadoComissionado(String tipo, String nome, String endereco,
+    private static Empregado gerarEmpregadoComissionado(String tipo, String nome, String endereco,
             double salario, double comissao) throws Exception {
-        switch (tipo) {
-            case "assalariado":
-            case "horista":
-                throw new TipoInvalidoException("Tipo nao aplicavel.");
-            case "comissionado":
-                return new Comissionado(nome, endereco, salario, comissao);
-            default:
-                throw new TipoInvalidoException("Tipo invalido.");
+        if ("comissionado".equals(tipo)) {
+            return new Comissionado(nome, endereco, salario, comissao);
+        } else if ("assalariado".equals(tipo) || "horista".equals(tipo)) {
+            throw new TipoInvalidoException("Tipo nao aplicavel.");
+        } else {
+            throw new TipoInvalidoException("Tipo invalido.");
         }
     }
 }
