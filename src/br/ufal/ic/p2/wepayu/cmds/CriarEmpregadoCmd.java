@@ -1,7 +1,6 @@
 package br.ufal.ic.p2.wepayu.cmds;
 
 import br.ufal.ic.p2.wepayu.models.*;
-import br.ufal.ic.p2.wepayu.Exception.*;
 import java.util.Map;
 
 public class CriarEmpregadoCmd implements Cmd {

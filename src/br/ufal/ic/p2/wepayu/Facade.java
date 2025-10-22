@@ -2,7 +2,6 @@ package br.ufal.ic.p2.wepayu;
 
 import br.ufal.ic.p2.wepayu.services.*;
 import br.ufal.ic.p2.wepayu.models.*;
-import br.ufal.ic.p2.wepayu.Exception.*;
 import br.ufal.ic.p2.wepayu.cmds.*;
 
 import java.util.Map;
