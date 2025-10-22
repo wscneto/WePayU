@@ -38,8 +38,6 @@ public class LancarVendaCmd implements Cmd {
             comissionado.getResultadoDeVenda().add(resultadoDeVenda);
         } catch (EmpregadoNaoEncontradoException | EmpregadoNaoEhComissionadoException e) {
             throw e;
-        } catch (Exception e) {
-            throw new ErroLancamentoVendaException("Erro ao lançar venda: " + e.getMessage(), e);
         }
     }
 

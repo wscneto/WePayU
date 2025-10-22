@@ -36,10 +36,8 @@ public class AlterarEmpregadoCmd implements Cmd {
             aplicarAlteracao(empregado, atributo, valores);
         } catch (EmpregadoNaoEncontradoException e) {
             throw e;
-        } catch (AgendaPagamentoInvalidaException e) {
-            throw new RuntimeException(e.getMessage());
         } catch (Exception e) {
-            throw new ErroAlteracaoEmpregadoException(e.getMessage());
+            throw new RuntimeException(e.getMessage());
         }
     }
 
@@ -66,8 +64,8 @@ public class AlterarEmpregadoCmd implements Cmd {
             case "salario":
                 return empregado.getSalario();
             case "comissao":
-                if (empregado instanceof br.ufal.ic.p2.wepayu.models.Comissionado)
-                    return ((br.ufal.ic.p2.wepayu.models.Comissionado) empregado).getTaxaDeComissao();
+                if (empregado instanceof Comissionado)
+                    return ((Comissionado) empregado).getTaxaDeComissao();
 
                 return null;
             case "sindicalizado":
@@ -79,18 +77,18 @@ public class AlterarEmpregadoCmd implements Cmd {
             case "metodoPagamento":
                 return empregado.getMetodoPagamento();
             case "banco":
-                if (empregado.getMetodoPagamento() instanceof br.ufal.ic.p2.wepayu.models.Banco)
-                    return ((br.ufal.ic.p2.wepayu.models.Banco) empregado.getMetodoPagamento()).getBanco();
+                if (empregado.getMetodoPagamento() instanceof Banco)
+                    return ((Banco) empregado.getMetodoPagamento()).getBanco();
 
                 return null;
             case "agencia":
-                if (empregado.getMetodoPagamento() instanceof br.ufal.ic.p2.wepayu.models.Banco)
-                    return ((br.ufal.ic.p2.wepayu.models.Banco) empregado.getMetodoPagamento()).getAgencia();
+                if (empregado.getMetodoPagamento() instanceof Banco)
+                    return ((Banco) empregado.getMetodoPagamento()).getAgencia();
 
                 return null;
             case "contaCorrente":
-                if (empregado.getMetodoPagamento() instanceof br.ufal.ic.p2.wepayu.models.Banco)
-                    return ((br.ufal.ic.p2.wepayu.models.Banco) empregado.getMetodoPagamento()).getContaCorrente();
+                if (empregado.getMetodoPagamento() instanceof Banco)
+                    return ((Banco) empregado.getMetodoPagamento()).getContaCorrente();
 
                 return null;
             case "agendaPagamento":
@@ -166,7 +164,7 @@ public class AlterarEmpregadoCmd implements Cmd {
 
                 Empregado novoEmpregadoSalario;
                 if ("comissionado".equals(tipoAtualSalario)) {
-                    double comissaoAtual = ((br.ufal.ic.p2.wepayu.models.Comissionado) empregado)
+                    double comissaoAtual = ((Comissionado) empregado)
                             .getTaxaDeComissao();
                     novoEmpregadoSalario = EmpregadoFactory.criarEmpregado(tipoAtualSalario, nomeSalario,
                             enderecoSalario, valor, String.valueOf(comissaoAtual));
@@ -184,7 +182,7 @@ public class AlterarEmpregadoCmd implements Cmd {
                 if (valor == null || valor.isBlank())
                     throw new ComissaoNulaException("Comissao nao pode ser nula.");
 
-                if (empregado instanceof br.ufal.ic.p2.wepayu.models.Comissionado) {
+                if (empregado instanceof Comissionado) {
                     double comissaoNumerica;
                     try {
                         comissaoNumerica = Double.parseDouble(valor.replace(",", "."));
@@ -195,9 +193,9 @@ public class AlterarEmpregadoCmd implements Cmd {
                     if (comissaoNumerica < 0)
                         throw new ComissaoNegativaException("Comissao deve ser nao-negativa.");
 
-                    ((br.ufal.ic.p2.wepayu.models.Comissionado) empregado).setTaxaDeComissao(comissaoNumerica);
+                    ((Comissionado) empregado).setTaxaDeComissao(comissaoNumerica);
                 } else {
-                    throw new br.ufal.ic.p2.wepayu.Exception.EmpregadoNaoEhComissionadoException(
+                    throw new EmpregadoNaoEhComissionadoException(
                             "Empregado nao eh comissionado.");
                 }
                 break;
@@ -222,12 +220,12 @@ public class AlterarEmpregadoCmd implements Cmd {
                     try {
                         taxa = Double.parseDouble(taxaSindical);
                     } catch (NumberFormatException e) {
-                        throw new br.ufal.ic.p2.wepayu.Exception.ValorNaoNumericoException(
+                        throw new ValorNaoNumericoException(
                                 "Taxa sindical deve ser numerica.");
                     }
 
                     if (taxa < 0)
-                        throw new br.ufal.ic.p2.wepayu.Exception.ValorNegativoException(
+                        throw new ValorNegativoException(
                                 "Taxa sindical deve ser nao-negativa.");
 
                     if (membrosSindicato.containsKey(idSindicato))
@@ -235,7 +233,7 @@ public class AlterarEmpregadoCmd implements Cmd {
                                 "Ha outro empregado com esta identificacao de sindicato");
 
                     if (idSindicato != null && taxaSindical != null) {
-                        br.ufal.ic.p2.wepayu.models.MembroSindicato membro = MembroSindicatoFactory
+                        MembroSindicato membro = MembroSindicatoFactory
                                 .criarMembro(idSindicato, taxaSindical);
                         membro.setTaxaSindical(taxa);
                         empregado.setSindicato(membro);
@@ -265,23 +263,23 @@ public class AlterarEmpregadoCmd implements Cmd {
                     if (contaCorrente == null || contaCorrente.isBlank())
                         throw new ContaCorrenteNaoPodeSerNulaException("Conta corrente nao pode ser nulo.");
 
-                    br.ufal.ic.p2.wepayu.models.Banco metodoBanco = new br.ufal.ic.p2.wepayu.models.Banco(banco,
+                    Banco metodoBanco = new Banco(banco,
                             agencia, contaCorrente);
                     empregado.setMetodoPagamento(metodoBanco);
                 } else if ("correios".equals(metodoValor)) {
-                    br.ufal.ic.p2.wepayu.models.Correios metodoCorreios = new br.ufal.ic.p2.wepayu.models.Correios();
+                    Correios metodoCorreios = new Correios();
                     empregado.setMetodoPagamento(metodoCorreios);
                 } else if ("emMaos".equals(metodoValor)) {
-                    br.ufal.ic.p2.wepayu.models.EmMaos metodoEmMaos = new br.ufal.ic.p2.wepayu.models.EmMaos();
+                    EmMaos metodoEmMaos = new EmMaos();
                     empregado.setMetodoPagamento(metodoEmMaos);
                 }
                 break;
             case "agendaPagamento":
                 if (valor == null || valor.isBlank())
-                    throw new br.ufal.ic.p2.wepayu.Exception.AtributoNaoPodeSerNuloException(
+                    throw new AtributoNaoPodeSerNuloException(
                             "Agenda de pagamento nao pode ser nula.");
 
-                if (!br.ufal.ic.p2.wepayu.models.AgendaPag.isAgendaValida(valor))
+                if (!AgendaPag.isAgendaValida(valor))
                     throw new AgendaPagamentoInvalidaException("Agenda de pagamento nao esta disponivel");
 
                 empregado.setAgendaPagamento(valor);
@@ -304,8 +302,8 @@ public class AlterarEmpregadoCmd implements Cmd {
             case "salario":
                 break;
             case "comissao":
-                if (empregado instanceof br.ufal.ic.p2.wepayu.models.Comissionado)
-                    ((br.ufal.ic.p2.wepayu.models.Comissionado) empregado)
+                if (empregado instanceof Comissionado)
+                    ((Comissionado) empregado)
                             .setTaxaDeComissao((Double) valorAnterior);
                 break;
             case "sindicalizado":
@@ -330,25 +328,25 @@ public class AlterarEmpregadoCmd implements Cmd {
                     empregado.getSindicato().setTaxaSindical((Double) valorAnterior);
                 break;
             case "metodoPagamento":
-                empregado.setMetodoPagamento((br.ufal.ic.p2.wepayu.models.MetodoPagamento) valorAnterior);
+                empregado.setMetodoPagamento((MetodoPagamento) valorAnterior);
                 break;
             case "banco":
-                if (empregado.getMetodoPagamento() instanceof br.ufal.ic.p2.wepayu.models.Banco)
-                    ((br.ufal.ic.p2.wepayu.models.Banco) empregado.getMetodoPagamento())
+                if (empregado.getMetodoPagamento() instanceof Banco)
+                    ((Banco) empregado.getMetodoPagamento())
                             .setBanco((String) valorAnterior);
                 break;
             case "agencia":
-                if (empregado.getMetodoPagamento() instanceof br.ufal.ic.p2.wepayu.models.Banco)
-                    ((br.ufal.ic.p2.wepayu.models.Banco) empregado.getMetodoPagamento())
+                if (empregado.getMetodoPagamento() instanceof Banco)
+                    ((Banco) empregado.getMetodoPagamento())
                             .setAgencia((String) valorAnterior);
                 break;
             case "contaCorrente":
-                if (empregado.getMetodoPagamento() instanceof br.ufal.ic.p2.wepayu.models.Banco)
-                    ((br.ufal.ic.p2.wepayu.models.Banco) empregado.getMetodoPagamento())
+                if (empregado.getMetodoPagamento() instanceof Banco)
+                    ((Banco) empregado.getMetodoPagamento())
                             .setContaCorrente((String) valorAnterior);
                 break;
             case "agendaPagamento":
-                empregado.setAgendaPagamento((br.ufal.ic.p2.wepayu.models.AgendaPag) valorAnterior);
+                empregado.setAgendaPagamento((AgendaPag) valorAnterior);
                 break;
         }
     }

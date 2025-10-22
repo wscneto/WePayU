@@ -1,7 +1,6 @@
 package br.ufal.ic.p2.wepayu.models;
 
 public class EmMaos extends MetodoPagamento {
-
     public EmMaos() {
     }
 
@@ -14,5 +13,4 @@ public class EmMaos extends MetodoPagamento {
     public void Pagamento() {
         System.out.println("Em mãos");
     }
-
 }

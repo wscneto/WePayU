@@ -22,7 +22,7 @@ public class ZerarSistemaCmd implements Cmd {
 
         empregados.clear();
         membrosSindicato.clear();
-        br.ufal.ic.p2.wepayu.models.AgendaDePags.limparAgendasCustomizadas();
+        AgendaDePags.limparAgendasCustomizadas();
     }
 
     @Override

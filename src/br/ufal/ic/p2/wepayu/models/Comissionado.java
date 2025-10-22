@@ -1,6 +1,8 @@
 package br.ufal.ic.p2.wepayu.models;
 
 import java.util.ArrayList;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 public class Comissionado extends Empregado {
     private double salarioMensal;
@@ -55,8 +57,8 @@ public class Comissionado extends Empregado {
     }
 
     private String truncarValorMonetario(double valor) {
-        java.math.BigDecimal bd = java.math.BigDecimal.valueOf(valor);
-        bd = bd.setScale(2, java.math.RoundingMode.DOWN);
+        BigDecimal bd = BigDecimal.valueOf(valor);
+        bd = bd.setScale(2, RoundingMode.DOWN);
         return bd.toString().replace('.', ',');
     }
 

@@ -1,6 +1,6 @@
 package br.ufal.ic.p2.wepayu.models;
 
-import br.ufal.ic.p2.wepayu.utils.FormatacaoMonetariaUtil;
+import br.ufal.ic.p2.wepayu.utils.*;
 
 public class CartaoPonto {
     private String data;

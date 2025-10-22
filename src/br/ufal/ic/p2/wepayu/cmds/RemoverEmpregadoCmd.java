@@ -23,8 +23,6 @@ public class RemoverEmpregadoCmd implements Cmd {
             empregados.remove(id);
         } catch (EmpregadoNaoEncontradoException e) {
             throw e;
-        } catch (Exception e) {
-            throw new ErroRemocaoEmpregadoException("Erro ao remover empregado: " + e.getMessage(), e);
         }
     }
 

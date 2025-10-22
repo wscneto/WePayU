@@ -32,8 +32,6 @@ public class LancarTaxaServicoCmd implements Cmd {
             membro.getTaxasDeServicos().add(taxaServico);
         } catch (MembroNaoExisteException e) {
             throw e;
-        } catch (Exception e) {
-            throw new ErroLancamentoTaxaServicoException("Erro ao lançar taxa de serviço: " + e.getMessage(), e);
         }
     }
 

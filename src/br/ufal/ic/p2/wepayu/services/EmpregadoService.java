@@ -4,6 +4,7 @@ import br.ufal.ic.p2.wepayu.models.*;
 import br.ufal.ic.p2.wepayu.factories.*;
 import br.ufal.ic.p2.wepayu.Exception.*;
 import br.ufal.ic.p2.wepayu.cmds.*;
+import br.ufal.ic.p2.wepayu.utils.*;
 
 import java.util.List;
 import java.util.Map;
@@ -217,16 +218,16 @@ public class EmpregadoService {
                                 return empregado.getSindicato() != null ? "true" : "false";
                         case "idSindicato":
                                 if (empregado.getSindicato() == null) {
-                                        throw new br.ufal.ic.p2.wepayu.Exception.EmpregadoNaoEhSindicalizadoException(
+                                        throw new EmpregadoNaoEhSindicalizadoException(
                                                         "Empregado nao eh sindicalizado.");
                                 }
                                 return empregado.getSindicato().getIdMembro();
                         case "taxaSindical":
                                 if (empregado.getSindicato() == null) {
-                                        throw new br.ufal.ic.p2.wepayu.Exception.EmpregadoNaoEhSindicalizadoException(
+                                        throw new EmpregadoNaoEhSindicalizadoException(
                                                         "Empregado nao eh sindicalizado.");
                                 }
-                                return br.ufal.ic.p2.wepayu.utils.FormatacaoMonetariaUtil
+                                return FormatacaoMonetariaUtil
                                                 .formatValor(empregado.getSindicato().getTaxaSindical());
                         case "metodoPagamento":
                                 return empregado.getMetodoPagamento().getMetodoPagamento();
@@ -234,26 +235,26 @@ public class EmpregadoService {
                                 if (empregado.getMetodoPagamento() instanceof Banco) {
                                         return ((Banco) empregado.getMetodoPagamento()).getBanco();
                                 }
-                                throw new br.ufal.ic.p2.wepayu.Exception.EmpregadoNaoRecebeEmBancoException(
+                                throw new EmpregadoNaoRecebeEmBancoException(
                                                 "Empregado nao recebe em banco.");
                         case "agencia":
                                 if (empregado.getMetodoPagamento() instanceof Banco) {
                                         return ((Banco) empregado.getMetodoPagamento()).getAgencia();
                                 }
-                                throw new br.ufal.ic.p2.wepayu.Exception.EmpregadoNaoRecebeEmBancoException(
+                                throw new EmpregadoNaoRecebeEmBancoException(
                                                 "Empregado nao recebe em banco.");
                         case "contaCorrente":
                                 if (empregado.getMetodoPagamento() instanceof Banco) {
                                         return ((Banco) empregado.getMetodoPagamento()).getContaCorrente();
                                 }
-                                throw new br.ufal.ic.p2.wepayu.Exception.EmpregadoNaoRecebeEmBancoException(
+                                throw new EmpregadoNaoRecebeEmBancoException(
                                                 "Empregado nao recebe em banco.");
                         case "comissao":
                                 if (empregado instanceof Comissionado) {
                                         return String.valueOf(((Comissionado) empregado).getTaxaDeComissao())
                                                         .replace('.', ',');
                                 }
-                                throw new br.ufal.ic.p2.wepayu.Exception.EmpregadoNaoEhComissionadoException(
+                                throw new EmpregadoNaoEhComissionadoException(
                                                 "Empregado nao eh comissionado.");
                         case "agendaPagamento":
                                 return empregado.getAgendaPagamento().getAgenda();

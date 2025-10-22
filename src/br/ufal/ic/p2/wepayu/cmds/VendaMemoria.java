@@ -7,14 +7,14 @@ import java.util.ArrayList;
 
 public class VendaMemoria implements Memoria {
     private final String empId;
-    private final Map<String, br.ufal.ic.p2.wepayu.models.Empregado> empregados;
+    private final Map<String, Empregado> empregados;
     private final List<ResultadoDeVenda> vendasAnteriores;
 
-    public VendaMemoria(String empId, Map<String, br.ufal.ic.p2.wepayu.models.Empregado> empregados) {
+    public VendaMemoria(String empId, Map<String, Empregado> empregados) {
         this.empId = empId;
         this.empregados = empregados;
 
-        br.ufal.ic.p2.wepayu.models.Empregado empregado = empregados.get(empId);
+        Empregado empregado = empregados.get(empId);
         if (empregado instanceof Comissionado) {
             Comissionado comissionado = (Comissionado) empregado;
             this.vendasAnteriores = new ArrayList<>(comissionado.getResultadoDeVenda());
@@ -24,7 +24,7 @@ public class VendaMemoria implements Memoria {
 
     @Override
     public void restaurar() {
-        br.ufal.ic.p2.wepayu.models.Empregado empregado = empregados.get(empId);
+        Empregado empregado = empregados.get(empId);
         if (empregado instanceof Comissionado) {
             Comissionado comissionado = (Comissionado) empregado;
             comissionado.getResultadoDeVenda().clear();

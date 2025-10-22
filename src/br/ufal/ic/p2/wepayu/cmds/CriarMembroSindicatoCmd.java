@@ -15,11 +15,7 @@ public class CriarMembroSindicatoCmd implements Cmd {
 
     @Override
     public void exec() {
-        try {
-            membrosSindicato.put(membro.getIdMembro(), membro);
-        } catch (Exception e) {
-            throw new ErroCriacaoMembroSindicatoException("Erro ao criar membro do sindicato: " + e.getMessage(), e);
-        }
+        membrosSindicato.put(membro.getIdMembro(), membro);
     }
 
     @Override

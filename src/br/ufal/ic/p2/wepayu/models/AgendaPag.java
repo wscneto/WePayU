@@ -1,5 +1,9 @@
 package br.ufal.ic.p2.wepayu.models;
 
+import java.time.temporal.*;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+
 public class AgendaPag {
     private String agenda;
 
@@ -66,22 +70,22 @@ public class AgendaPag {
             int mes = Integer.parseInt(partes[1]);
             int ano = Integer.parseInt(partes[2]);
 
-            java.time.LocalDate localDate = java.time.LocalDate.of(ano, mes, dia);
-            java.time.DayOfWeek diaSemana = localDate.getDayOfWeek();
+            LocalDate localDate = LocalDate.of(ano, mes, dia);
+            DayOfWeek diaSemana = localDate.getDayOfWeek();
 
             switch (agenda) {
                 case SEMANAL_5:
-                    return diaSemana == java.time.DayOfWeek.FRIDAY;
+                    return diaSemana == DayOfWeek.FRIDAY;
 
                 case SEMANAL_2_5:
-                    java.time.LocalDate primeiroPagamento = java.time.LocalDate.of(2005, 1, 14);
+                    LocalDate primeiroPagamento = LocalDate.of(2005, 1, 14);
 
                     if (localDate.isBefore(primeiroPagamento)) {
                         return false;
                     }
 
-                    long diasEntre = java.time.temporal.ChronoUnit.DAYS.between(primeiroPagamento, localDate);
-                    return diaSemana == java.time.DayOfWeek.FRIDAY && diasEntre % 14 == 0;
+                    long diasEntre = ChronoUnit.DAYS.between(primeiroPagamento, localDate);
+                    return diaSemana == DayOfWeek.FRIDAY && diasEntre % 14 == 0;
 
                 case MENSAL_DOLAR:
                     return localDate.equals(localDate.withDayOfMonth(localDate.lengthOfMonth()));
@@ -313,9 +317,9 @@ public class AgendaPag {
             int mesFinal = Integer.parseInt(partesFinal[1]);
             int anoFinal = Integer.parseInt(partesFinal[2]);
 
-            java.time.LocalDate localDate = java.time.LocalDate.of(ano, mes, dia);
-            java.time.LocalDate dataInicialLocal = java.time.LocalDate.of(anoInicial, mesInicial, diaInicial);
-            java.time.LocalDate dataFinalLocal = java.time.LocalDate.of(anoFinal, mesFinal, diaFinal);
+            LocalDate localDate = LocalDate.of(ano, mes, dia);
+            LocalDate dataInicialLocal = LocalDate.of(anoInicial, mesInicial, diaInicial);
+            LocalDate dataFinalLocal = LocalDate.of(anoFinal, mesFinal, diaFinal);
 
             return !localDate.isBefore(dataInicialLocal) && !localDate.isAfter(dataFinalLocal);
         } catch (Exception e) {

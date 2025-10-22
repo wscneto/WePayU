@@ -2,7 +2,7 @@ package br.ufal.ic.p2.wepayu.services;
 
 import br.ufal.ic.p2.wepayu.models.*;
 import br.ufal.ic.p2.wepayu.Exception.*;
-import br.ufal.ic.p2.wepayu.utils.FormatacaoMonetariaUtil;
+import br.ufal.ic.p2.wepayu.utils.*;
 import java.util.Map;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -31,7 +31,7 @@ public class FolhaPagamentoService {
 
             for (Empregado empregado : empregados.values()) {
                 if (deveReceberNaData(empregado, dataFolha)) {
-                    total = total.add(calcularSalario(empregado, dataFolha)); // acumula com máxima precisão
+                    total = total.add(calcularSalario(empregado, dataFolha));
                 }
             }
 
@@ -85,7 +85,7 @@ public class FolhaPagamentoService {
         String tipo = empregado.getTipo();
         String agenda = empregado.getAgendaPagamento().getAgenda();
 
-        if (agenda.equals(br.ufal.ic.p2.wepayu.models.AgendaPag.getAgendaPadrao(tipo))) {
+        if (agenda.equals(AgendaPag.getAgendaPadrao(tipo))) {
             switch (tipo) {
                 case "horista":
                     return calcularSalarioHorista((Horista) empregado, data);
@@ -123,7 +123,7 @@ public class FolhaPagamentoService {
     }
 
     private BigDecimal calcularSalarioHorista(Horista empregado, LocalDate data) {
-        LocalDate inicioSemana = data.minusDays(6); // semana de 7 dias
+        LocalDate inicioSemana = data.minusDays(6);
         BigDecimal horasNormais = BigDecimal.ZERO;
         BigDecimal horasExtras = BigDecimal.ZERO;
 

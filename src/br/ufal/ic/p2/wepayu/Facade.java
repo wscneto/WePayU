@@ -60,8 +60,7 @@ public class Facade {
      * CRIAÇÃO / ALTERAÇÃO / REMOÇÃO DE EMPREGADOS
      */
 
-    public String criarEmpregado(String nome, String endereco, String tipo, String salario)
-            throws Exception, RuntimeException {
+    public String criarEmpregado(String nome, String endereco, String tipo, String salario) throws Exception {
         String id = empService.criarEmpregado(nome, endereco, tipo, salario);
         salvarSistema();
         return id;
@@ -74,21 +73,18 @@ public class Facade {
         return id;
     }
 
-    public void alteraEmpregado(String emp, String atributo, String valor)
-            throws Exception {
+    public void alteraEmpregado(String emp, String atributo, String valor) throws Exception {
         empService.alteraEmpregado(emp, atributo, valor);
         salvarSistema();
     }
 
-    public void alteraEmpregado(String emp, String atributo, String valor, String comissao_salario)
-            throws Exception {
+    public void alteraEmpregado(String emp, String atributo, String valor, String comissao_salario) throws Exception {
         empService.alteraEmpregado(emp, atributo, valor, comissao_salario);
         salvarSistema();
     }
 
     public void alteraEmpregado(String emp, String atributo, String valor1, String banco, String agencia,
-            String contaCorrente)
-            throws Exception {
+            String contaCorrente) throws Exception {
         empService.alteraEmpregado(emp, atributo, valor1, banco, agencia, contaCorrente);
         salvarSistema();
     }
@@ -100,25 +96,21 @@ public class Facade {
     }
 
     public void alteraEmpregado(String emp, String atributo, String valor1, String banco, String agencia,
-            String contaCorrente, String comissao)
-            throws Exception {
+            String contaCorrente, String comissao) throws Exception {
         empService.alteraEmpregado(emp, atributo, valor1, banco, agencia, contaCorrente, comissao);
         salvarSistema();
     }
 
-    public void removerEmpregado(String emp)
-            throws Exception, RuntimeException {
+    public void removerEmpregado(String emp) throws Exception {
         empService.removerEmpregado(emp);
         salvarSistema();
     }
 
-    public String getEmpregadoPorNome(String emp, String indice)
-            throws Exception, RuntimeException {
+    public String getEmpregadoPorNome(String emp, String indice) throws Exception {
         return empService.getEmpregadoPorNome(emp, indice);
     }
 
-    public String getAtributoEmpregado(String emp, String atributo)
-            throws Exception, RuntimeException {
+    public String getAtributoEmpregado(String emp, String atributo) throws Exception {
         return empService.getAtributoEmpregado(emp, atributo);
     }
 
@@ -130,21 +122,18 @@ public class Facade {
      * SINDICATO
      */
 
-    public MembroSindicato criarMembro(String id, String taxa)
-            throws Exception {
+    public MembroSindicato criarMembro(String id, String taxa) throws Exception {
         MembroSindicato membro = sindService.criarMembro(id, taxa);
         salvarSistema();
         return membro;
     }
 
-    public void lancaTaxaServico(String membro, String data, String valor)
-            throws Exception {
+    public void lancaTaxaServico(String membro, String data, String valor) throws Exception {
         sindService.lancaTaxaServico(membro, data, valor);
         salvarSistema();
     }
 
-    public String getTaxasServico(String empregado, String dataInicial, String dataFinal)
-            throws Exception, RuntimeException {
+    public String getTaxasServico(String empregado, String dataInicial, String dataFinal) throws Exception {
         return sindService.getTaxasServico(empregado, dataInicial, dataFinal);
     }
 
@@ -152,30 +141,25 @@ public class Facade {
      * LANÇA CARTÃO
      */
 
-    public void lancaCartao(String emp, String data, String horas)
-            throws Exception {
+    public void lancaCartao(String emp, String data, String horas) throws Exception {
         lancService.lancaCartao(emp, data, horas);
         salvarSistema();
     }
 
-    public void lancaVenda(String emp, String data, String valor)
-            throws Exception {
+    public void lancaVenda(String emp, String data, String valor) throws Exception {
         lancService.lancaVenda(emp, data, valor);
         salvarSistema();
     }
 
-    public String getHorasNormaisTrabalhadas(String emp, String dataInicial, String dataFinal)
-            throws Exception, RuntimeException {
+    public String getHorasNormaisTrabalhadas(String emp, String dataInicial, String dataFinal) throws Exception {
         return lancService.getHorasNormaisTrabalhadas(emp, dataInicial, dataFinal);
     }
 
-    public String getHorasExtrasTrabalhadas(String emp, String dataInicial, String dataFinal)
-            throws Exception, RuntimeException {
+    public String getHorasExtrasTrabalhadas(String emp, String dataInicial, String dataFinal) throws Exception {
         return lancService.getHorasExtrasTrabalhadas(emp, dataInicial, dataFinal);
     }
 
-    public String getVendasRealizadas(String emp, String dataInicial, String dataFinal)
-            throws Exception, RuntimeException {
+    public String getVendasRealizadas(String emp, String dataInicial, String dataFinal) throws Exception {
         return lancService.getVendasRealizadas(emp, dataInicial, dataFinal);
     }
 
@@ -183,11 +167,11 @@ public class Facade {
      * FOLHA DE PAGAMENTO
      */
 
-    public String totalFolha(String data) throws DataInvalidaException {
+    public String totalFolha(String data) throws Exception {
         return folhaPagService.totalFolha(data);
     }
 
-    public void rodaFolha(String data, String arquivo) throws DataInvalidaException {
+    public void rodaFolha(String data, String arquivo) throws Exception {
         RodaFolhaCmd command = new RodaFolhaCmd(data, arquivo, folhaPagService);
         cm.exec(command);
     }
@@ -211,7 +195,7 @@ public class Facade {
      * AGENDAS DE PAGAMENTO
      */
 
-    public void criarAgendaDePagamentos(String descricao) throws IllegalArgumentException {
+    public void criarAgendaDePagamentos(String descricao) throws Exception {
         br.ufal.ic.p2.wepayu.models.AgendaDePags.criarAgenda(descricao);
         salvarSistema();
     }

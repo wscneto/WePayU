@@ -36,8 +36,6 @@ public class LancarCartaoCmd implements Cmd {
             horista.getCartoes().add(cartao);
         } catch (EmpregadoNaoEncontradoException | EmpregadoNaoEhHoristaException e) {
             throw e;
-        } catch (Exception e) {
-            throw new ErroLancamentoCartaoException("Erro ao lançar cartão: " + e.getMessage(), e);
         }
     }
 

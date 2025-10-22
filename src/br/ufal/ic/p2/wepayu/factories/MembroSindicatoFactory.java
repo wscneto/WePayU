@@ -1,8 +1,8 @@
 package br.ufal.ic.p2.wepayu.factories;
 
 import br.ufal.ic.p2.wepayu.Exception.*;
-import br.ufal.ic.p2.wepayu.models.MembroSindicato;
-import br.ufal.ic.p2.wepayu.utils.FormatacaoMonetariaUtil;
+import br.ufal.ic.p2.wepayu.models.*;
+import br.ufal.ic.p2.wepayu.utils.*;
 
 public class MembroSindicatoFactory {
     public static MembroSindicato criarMembro(String idMembro, String taxaSindical)

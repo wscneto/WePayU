@@ -3,8 +3,8 @@ package br.ufal.ic.p2.wepayu.services;
 import br.ufal.ic.p2.wepayu.models.*;
 import br.ufal.ic.p2.wepayu.Exception.*;
 import br.ufal.ic.p2.wepayu.cmds.*;
-import br.ufal.ic.p2.wepayu.factories.MembroSindicatoFactory;
-import br.ufal.ic.p2.wepayu.utils.FormatacaoMonetariaUtil;
+import br.ufal.ic.p2.wepayu.factories.*;
+import br.ufal.ic.p2.wepayu.utils.*;
 
 import java.time.format.ResolverStyle;
 import java.util.Map;

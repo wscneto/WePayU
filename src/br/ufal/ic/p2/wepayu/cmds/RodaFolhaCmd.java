@@ -20,8 +20,6 @@ public class RodaFolhaCmd implements Cmd {
             folhaPagamentoService.rodaFolha(data, arquivo);
         } catch (DataInvalidaException e) {
             throw new RuntimeException(e);
-        } catch (Exception e) {
-            throw new RuntimeException("Erro ao rodar folha: " + e.getMessage(), e);
         }
     }
 

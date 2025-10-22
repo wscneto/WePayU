@@ -39,7 +39,6 @@ public class Assalariado extends Empregado {
         return decimal.toString().replace('.', ',');
     }
 
-    // Métodos auxiliares adicionados
     public boolean validarValorSalarial() {
         return this.remuneracao >= 0;
     }

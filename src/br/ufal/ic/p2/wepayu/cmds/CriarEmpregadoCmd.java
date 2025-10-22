@@ -16,12 +16,8 @@ public class CriarEmpregadoCmd implements Cmd {
 
     @Override
     public void exec() {
-        try {
-            this.id = empregado.getId();
-            empregados.put(id, empregado);
-        } catch (Exception e) {
-            throw new ErroCriacaoEmpregadoException("Erro ao criar empregado: " + e.getMessage(), e);
-        }
+        this.id = empregado.getId();
+        empregados.put(id, empregado);
     }
 
     @Override
