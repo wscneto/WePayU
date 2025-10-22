@@ -1,173 +1,27 @@
 package br.ufal.ic.p2.wepayu.services;
 
+import java.util.ArrayList;
+import java.util.List;
 import br.ufal.ic.p2.wepayu.models.*;
 import br.ufal.ic.p2.wepayu.Exception.*;
 import br.ufal.ic.p2.wepayu.utils.*;
 import java.util.Map;
+import java.time.temporal.ChronoUnit;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.List;
-import java.util.ArrayList;
 
 public class FolhaPagamentoService {
 
-    private Map<String, Empregado> empregados;
-    private Map<String, MembroSindicato> membrosSindicato;
+    private Map<String, Empregado> emps;
+    private Map<String, MembroSindicato> membsSind;
 
-    public FolhaPagamentoService(Map<String, Empregado> empregados, Map<String, MembroSindicato> membrosSindicato) {
-        this.empregados = empregados;
-        this.membrosSindicato = membrosSindicato;
-    }
-
-    public String totalFolha(String data) throws DataInvalidaException {
-        try {
-            LocalDate dataFolha = LocalDate.parse(data, DateTimeFormatter.ofPattern("d/M/yyyy"));
-            BigDecimal total = BigDecimal.ZERO;
-
-            for (Empregado empregado : empregados.values()) {
-                if (deveReceberNaData(empregado, dataFolha)) {
-                    total = total.add(calcularSalario(empregado, dataFolha));
-                }
-            }
-
-            return FormatacaoMonetariaUtil.formatValor(total);
-        } catch (Exception e) {
-            return "0,00";
-        }
-    }
-
-    public void rodaFolha(String data, String arquivo) throws DataInvalidaException {
-        try {
-            LocalDate dataFolha = LocalDate.parse(data, DateTimeFormatter.ofPattern("d/M/yyyy"));
-
-            List<Empregado> empregadosHoristas = new ArrayList<>();
-            List<Empregado> empregadosAssalariados = new ArrayList<>();
-            List<Empregado> empregadosComissionados = new ArrayList<>();
-
-            for (Empregado empregado : empregados.values()) {
-                if (deveReceberNaData(empregado, dataFolha)) {
-                    switch (empregado.getTipo()) {
-                        case "horista":
-                            empregadosHoristas.add(empregado);
-                            break;
-                        case "assalariado":
-                            empregadosAssalariados.add(empregado);
-                            break;
-                        case "comissionado":
-                            empregadosComissionados.add(empregado);
-                            break;
-                    }
-                }
-            }
-
-            empregadosHoristas.sort((e1, e2) -> e1.getNome().compareTo(e2.getNome()));
-            empregadosAssalariados.sort((e1, e2) -> e1.getNome().compareTo(e2.getNome()));
-            empregadosComissionados.sort((e1, e2) -> e1.getNome().compareTo(e2.getNome()));
-
-            gerarArquivoFolha(dataFolha, arquivo, empregadosHoristas, empregadosAssalariados, empregadosComissionados);
-
-        } catch (Exception e) {
-            throw new DataInvalidaException("Data invalida.");
-        }
-    }
-
-    private boolean deveReceberNaData(Empregado empregado, LocalDate data) {
-        String dataString = data.format(DateTimeFormatter.ofPattern("d/M/yyyy"));
-        return empregado.getAgendaPagamento().devePagarNaData(dataString);
-    }
-
-    private BigDecimal calcularSalario(Empregado empregado, LocalDate data) {
-        String tipo = empregado.getTipo();
-        String agenda = empregado.getAgendaPagamento().getAgenda();
-
-        if (agenda.equals(AgendaPag.getAgendaPadrao(tipo))) {
-            switch (tipo) {
-                case "horista":
-                    return calcularSalarioHorista((Horista) empregado, data);
-                case "assalariado":
-                    return calcularSalarioAssalariado((Assalariado) empregado, data);
-                case "comissionado":
-                    return calcularSalarioComissionado((Comissionado) empregado, data);
-                default:
-                    return BigDecimal.ZERO;
-            }
-        } else {
-            String dataString = data.format(DateTimeFormatter.ofPattern("d/M/yyyy"));
-            String dataInicial = calcularDataInicialPeriodo(empregado, data);
-            String dataFinal = dataString;
-
-            double valorPagamento = empregado.getAgendaPagamento().calcularValorPagamento(empregado, dataInicial,
-                    dataFinal);
-            return BigDecimal.valueOf(valorPagamento);
-        }
-    }
-
-    private String calcularDataInicialPeriodo(Empregado empregado, LocalDate data) {
-        String agenda = empregado.getAgendaPagamento().getAgenda();
-
-        switch (agenda) {
-            case "semanal 5":
-                return data.minusDays(6).format(DateTimeFormatter.ofPattern("d/M/yyyy"));
-            case "semanal 2 5":
-                return data.minusDays(13).format(DateTimeFormatter.ofPattern("d/M/yyyy"));
-            case "mensal $":
-                return data.withDayOfMonth(1).format(DateTimeFormatter.ofPattern("d/M/yyyy"));
-            default:
-                return data.minusDays(6).format(DateTimeFormatter.ofPattern("d/M/yyyy"));
-        }
-    }
-
-    private BigDecimal calcularSalarioHorista(Horista empregado, LocalDate data) {
-        LocalDate inicioSemana = data.minusDays(6);
-        BigDecimal horasNormais = BigDecimal.ZERO;
-        BigDecimal horasExtras = BigDecimal.ZERO;
-
-        for (CartaoPonto cartao : empregado.getCartoes()) {
-            LocalDate dataCartao = LocalDate.parse(cartao.getData(), DateTimeFormatter.ofPattern("d/M/yyyy"));
-            if (!dataCartao.isBefore(inicioSemana) && !dataCartao.isAfter(data)) {
-                BigDecimal horas = BigDecimal.valueOf(cartao.getHoras());
-                horasNormais = horasNormais.add(horas.min(BigDecimal.valueOf(8.0)));
-                horasExtras = horasExtras.add(horas.subtract(BigDecimal.valueOf(8.0)).max(BigDecimal.ZERO));
-            }
-        }
-
-        BigDecimal salarioPorHora = BigDecimal.valueOf(empregado.getSalarioPorHora());
-        BigDecimal salarioBruto = horasNormais.multiply(salarioPorHora)
-                .add(horasExtras.multiply(salarioPorHora).multiply(BigDecimal.valueOf(1.5)));
-
-        return salarioBruto;
-    }
-
-    private BigDecimal calcularSalarioAssalariado(Assalariado empregado, LocalDate data) {
-        return BigDecimal.valueOf(empregado.getSalarioMensal());
-    }
-
-    private BigDecimal calcularSalarioComissionado(Comissionado empregado, LocalDate data) {
-        BigDecimal salarioMensal = BigDecimal.valueOf(empregado.getSalarioMensal());
-        BigDecimal salarioBase = salarioMensal.multiply(BigDecimal.valueOf(12))
-                .divide(BigDecimal.valueOf(26), 10, RoundingMode.DOWN);
-        salarioBase = salarioBase.setScale(2, RoundingMode.DOWN);
-
-        LocalDate inicioPeriodo = data.minusDays(14);
-        BigDecimal totalVendas = BigDecimal.ZERO;
-
-        for (ResultadoDeVenda venda : empregado.getResultadoDeVenda()) {
-            LocalDate dataVenda = LocalDate.parse(venda.getData(), DateTimeFormatter.ofPattern("d/M/yyyy"));
-            if (!dataVenda.isBefore(inicioPeriodo) && !dataVenda.isAfter(data)) {
-                totalVendas = totalVendas.add(BigDecimal.valueOf(venda.getValor()));
-            }
-        }
-
-        BigDecimal comissao = totalVendas.multiply(BigDecimal.valueOf(empregado.getTaxaDeComissao()));
-        comissao = comissao.setScale(2, RoundingMode.DOWN);
-        BigDecimal salarioBruto = salarioBase.add(comissao);
-
-        return salarioBruto;
+    public FolhaPagamentoService(Map<String, Empregado> emps, Map<String, MembroSindicato> membsSind) {
+        this.emps = emps;
+        this.membsSind = membsSind;
     }
 
     private void gerarArquivoFolha(LocalDate dataFolha, String arquivo,
@@ -357,6 +211,152 @@ public class FolhaPagamentoService {
             BigDecimal totalFolha = totalHoristasBruto.add(totalAssalariadosBruto).add(totalComissionadosBruto);
             writer.write(String.format("\nTOTAL FOLHA: %s\n", FormatacaoMonetariaUtil.formatValor(totalFolha)));
         }
+    }
+
+    public String totalFolha(String data) throws DataInvalidaException {
+        try {
+            LocalDate dataFolha = LocalDate.parse(data, DateTimeFormatter.ofPattern("d/M/yyyy"));
+            BigDecimal total = BigDecimal.ZERO;
+
+            for (Empregado empregado : emps.values()) {
+                if (deveReceberNaData(empregado, dataFolha)) {
+                    total = total.add(calcularSalario(empregado, dataFolha));
+                }
+            }
+
+            return FormatacaoMonetariaUtil.formatValor(total);
+        } catch (Exception e) {
+            return "0,00";
+        }
+    }
+
+    public void rodaFolha(String data, String arquivo) throws DataInvalidaException {
+        try {
+            LocalDate dataFolha = LocalDate.parse(data, DateTimeFormatter.ofPattern("d/M/yyyy"));
+
+            List<Empregado> empregadosHoristas = new ArrayList<>();
+            List<Empregado> empregadosAssalariados = new ArrayList<>();
+            List<Empregado> empregadosComissionados = new ArrayList<>();
+
+            for (Empregado empregado : emps.values()) {
+                if (deveReceberNaData(empregado, dataFolha)) {
+                    switch (empregado.getTipo()) {
+                        case "horista":
+                            empregadosHoristas.add(empregado);
+                            break;
+                        case "assalariado":
+                            empregadosAssalariados.add(empregado);
+                            break;
+                        case "comissionado":
+                            empregadosComissionados.add(empregado);
+                            break;
+                    }
+                }
+            }
+
+            empregadosHoristas.sort((e1, e2) -> e1.getNome().compareTo(e2.getNome()));
+            empregadosAssalariados.sort((e1, e2) -> e1.getNome().compareTo(e2.getNome()));
+            empregadosComissionados.sort((e1, e2) -> e1.getNome().compareTo(e2.getNome()));
+
+            gerarArquivoFolha(dataFolha, arquivo, empregadosHoristas, empregadosAssalariados, empregadosComissionados);
+
+        } catch (Exception e) {
+            throw new DataInvalidaException("Data invalida.");
+        }
+    }
+
+    private boolean deveReceberNaData(Empregado empregado, LocalDate data) {
+        String dataString = data.format(DateTimeFormatter.ofPattern("d/M/yyyy"));
+        return empregado.getAgendaPagamento().devePagarNaData(dataString);
+    }
+
+    private BigDecimal calcularSalario(Empregado empregado, LocalDate data) {
+        String tipo = empregado.getTipo();
+        String agenda = empregado.getAgendaPagamento().getAgenda();
+
+        if (agenda.equals(AgendaPag.getAgendaPadrao(tipo))) {
+            switch (tipo) {
+                case "horista":
+                    return calcularSalarioHorista((Horista) empregado, data);
+                case "assalariado":
+                    return calcularSalarioAssalariado((Assalariado) empregado, data);
+                case "comissionado":
+                    return calcularSalarioComissionado((Comissionado) empregado, data);
+                default:
+                    return BigDecimal.ZERO;
+            }
+        } else {
+            String dataString = data.format(DateTimeFormatter.ofPattern("d/M/yyyy"));
+            String dataInicial = calcularDataInicialPeriodo(empregado, data);
+            String dataFinal = dataString;
+
+            double valorPagamento = empregado.getAgendaPagamento().calcularValorPagamento(empregado, dataInicial,
+                    dataFinal);
+            return BigDecimal.valueOf(valorPagamento);
+        }
+    }
+
+    private String calcularDataInicialPeriodo(Empregado empregado, LocalDate data) {
+        String agenda = empregado.getAgendaPagamento().getAgenda();
+
+        switch (agenda) {
+            case "semanal 5":
+                return data.minusDays(6).format(DateTimeFormatter.ofPattern("d/M/yyyy"));
+            case "semanal 2 5":
+                return data.minusDays(13).format(DateTimeFormatter.ofPattern("d/M/yyyy"));
+            case "mensal $":
+                return data.withDayOfMonth(1).format(DateTimeFormatter.ofPattern("d/M/yyyy"));
+            default:
+                return data.minusDays(6).format(DateTimeFormatter.ofPattern("d/M/yyyy"));
+        }
+    }
+
+    private BigDecimal calcularSalarioHorista(Horista empregado, LocalDate data) {
+        LocalDate inicioSemana = data.minusDays(6);
+        BigDecimal horasNormais = BigDecimal.ZERO;
+        BigDecimal horasExtras = BigDecimal.ZERO;
+
+        for (CartaoPonto cartao : empregado.getCartoes()) {
+            LocalDate dataCartao = LocalDate.parse(cartao.getData(), DateTimeFormatter.ofPattern("d/M/yyyy"));
+            if (!dataCartao.isBefore(inicioSemana) && !dataCartao.isAfter(data)) {
+                BigDecimal horas = BigDecimal.valueOf(cartao.getHoras());
+                horasNormais = horasNormais.add(horas.min(BigDecimal.valueOf(8.0)));
+                horasExtras = horasExtras.add(horas.subtract(BigDecimal.valueOf(8.0)).max(BigDecimal.ZERO));
+            }
+        }
+
+        BigDecimal salarioPorHora = BigDecimal.valueOf(empregado.getSalarioPorHora());
+        BigDecimal salarioBruto = horasNormais.multiply(salarioPorHora)
+                .add(horasExtras.multiply(salarioPorHora).multiply(BigDecimal.valueOf(1.5)));
+
+        return salarioBruto;
+    }
+
+    private BigDecimal calcularSalarioAssalariado(Assalariado empregado, LocalDate data) {
+        return BigDecimal.valueOf(empregado.getSalarioMensal());
+    }
+
+    private BigDecimal calcularSalarioComissionado(Comissionado empregado, LocalDate data) {
+        BigDecimal salarioMensal = BigDecimal.valueOf(empregado.getSalarioMensal());
+        BigDecimal salarioBase = salarioMensal.multiply(BigDecimal.valueOf(12))
+                .divide(BigDecimal.valueOf(26), 10, RoundingMode.DOWN);
+        salarioBase = salarioBase.setScale(2, RoundingMode.DOWN);
+
+        LocalDate inicioPeriodo = data.minusDays(14);
+        BigDecimal totalVendas = BigDecimal.ZERO;
+
+        for (ResultadoDeVenda venda : empregado.getResultadoDeVenda()) {
+            LocalDate dataVenda = LocalDate.parse(venda.getData(), DateTimeFormatter.ofPattern("d/M/yyyy"));
+            if (!dataVenda.isBefore(inicioPeriodo) && !dataVenda.isAfter(data)) {
+                totalVendas = totalVendas.add(BigDecimal.valueOf(venda.getValor()));
+            }
+        }
+
+        BigDecimal comissao = totalVendas.multiply(BigDecimal.valueOf(empregado.getTaxaDeComissao()));
+        comissao = comissao.setScale(2, RoundingMode.DOWN);
+        BigDecimal salarioBruto = salarioBase.add(comissao);
+
+        return salarioBruto;
     }
 
     private BigDecimal calcularDescontos(Empregado empregado, LocalDate data) {
