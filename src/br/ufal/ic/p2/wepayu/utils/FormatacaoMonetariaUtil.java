@@ -4,20 +4,23 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 public class FormatacaoMonetariaUtil {
+
+    // ==============================================================
+    // ARREDONDAMENTO
+    // ==============================================================
+
     public static double arredondarValor(double valor) {
         BigDecimal bd = BigDecimal.valueOf(valor);
-        bd = bd.setScale(2, RoundingMode.DOWN);
-        return bd.doubleValue();
+        return bd.setScale(2, RoundingMode.DOWN).doubleValue();
     }
 
     public static double arredondarValor(String valorStr) {
-        if (valorStr == null || valorStr.isBlank())
+        if (valorStr == null || valorStr.isBlank()) {
             return 0.0;
-
-        String valorCorrigido = valorStr.replace(",", ".");
-
+        }
+        String valorNormalizado = valorStr.replace(",", ".");
         try {
-            double valor = Double.parseDouble(valorCorrigido);
+            double valor = Double.parseDouble(valorNormalizado);
             return arredondarValor(valor);
         } catch (NumberFormatException e) {
             return 0.0;
@@ -25,29 +28,31 @@ public class FormatacaoMonetariaUtil {
     }
 
     public static BigDecimal arredondarValor(BigDecimal valor) {
-        if (valor == null)
-            return BigDecimal.ZERO;
-        return valor.setScale(2, RoundingMode.DOWN);
+        return (valor != null) ? valor.setScale(2, RoundingMode.DOWN) : BigDecimal.ZERO;
     }
 
-    public static String formatValor(BigDecimal valor) {
-        if (valor == null)
-            return "0,00";
-
-        BigDecimal formatado = arredondarValor(valor);
-
-        return String.format("%.2f", formatado).replace(".", ",");
-    }
+    // ==============================================================
+    // FORMATAÇÃO PARA STRING
+    // ==============================================================
 
     public static String formatValor(double valor) {
-        double formatado = arredondarValor(valor);
-        return String.format("%.2f", formatado).replace(".", ",");
+        double arredondado = arredondarValor(valor);
+        return String.format("%.2f", arredondado).replace(".", ",");
     }
 
     public static String formatValor(String valorStr) {
         double valor = arredondarValor(valorStr);
         return formatValor(valor);
     }
+
+    public static String formatValor(BigDecimal valor) {
+        BigDecimal v = arredondarValor(valor);
+        return String.format("%.2f", v).replace(".", ",");
+    }
+
+    // ==============================================================
+    // CONVERSÃO
+    // ==============================================================
 
     public static double convertToDouble(BigDecimal valor) {
         if (valor == null)

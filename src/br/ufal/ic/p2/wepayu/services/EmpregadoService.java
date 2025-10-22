@@ -11,191 +11,136 @@ import java.util.Map;
 
 public class EmpregadoService {
 
-        private Map<String, Empregado> empregados;
-        private Map<String, MembroSindicato> membrosSindicato;
-        private int id;
-        private CmdManager cm;
+        private final Map<String, Empregado> empregados;
+        private final Map<String, MembroSindicato> membros;
+        private int contadorId;
+        private final CmdManager cmdManager;
 
-        public EmpregadoService(Map<String, Empregado> empregados,
-                        Map<String, MembroSindicato> membrosSindicato,
-                        int id,
-                        CmdManager cm) {
+        public EmpregadoService(Map<String, Empregado> empregados, Map<String, MembroSindicato> membrosSindicato,
+                        int idInicial, CmdManager cmdManager) {
                 this.empregados = empregados;
-                this.membrosSindicato = membrosSindicato;
-                this.id = id;
-                this.cm = cm;
+                this.membros = membrosSindicato;
+                this.contadorId = idInicial;
+                this.cmdManager = cmdManager;
         }
 
-        public String criarEmpregado(String nome, String endereco, String tipo, String salario)
-                        throws Exception, RuntimeException {
-
-                if (nome == null || nome.isBlank())
-                        throw new NomeNuloException("Nome nao pode ser nulo.");
-                if (endereco == null || endereco.isBlank())
-                        throw new EnderecoNuloException("Endereco nao pode ser nulo.");
-                if (tipo == null || tipo.isBlank())
-                        throw new TipoNaoPodeSerNuloException("Tipo nao pode ser nulo.");
-
-                Empregado empregado = EmpregadoFactory.criarEmpregado(tipo, nome, endereco, salario);
-                String idEmpregado = String.valueOf(id++);
-                empregado.setId(idEmpregado);
-
-                CriarEmpregadoCmd command = new CriarEmpregadoCmd(empregado, empregados);
-                cm.exec(command);
-
-                return idEmpregado;
+        // ---------------------------------------------------
+        // MÉTODOS DE CRIAÇÃO
+        // ---------------------------------------------------
+        public String criarEmpregado(String nome, String endereco, String tipo, String salario) throws Exception {
+                validarCamposBasicos(nome, endereco, tipo);
+                Empregado novo = EmpregadoFactory.criarEmpregado(tipo, nome, endereco, salario);
+                String identificador = gerarNovoId();
+                novo.setId(identificador);
+                cmdManager.exec(new CriarEmpregadoCmd(novo, empregados));
+                return identificador;
         }
 
         public String criarEmpregado(String nome, String endereco, String tipo, String salario, String comissao)
-                        throws Exception, RuntimeException {
-
-                if (nome == null || nome.isBlank())
-                        throw new NomeNuloException("Nome nao pode ser nulo.");
-                if (endereco == null || endereco.isBlank())
-                        throw new EnderecoNuloException("Endereco nao pode ser nulo.");
-                if (tipo == null || tipo.isBlank())
-                        throw new TipoNaoPodeSerNuloException("Tipo nao pode ser nulo.");
-
-                Empregado empregado = EmpregadoFactory.criarEmpregado(tipo, nome, endereco, salario, comissao);
-                String idEmpregado = String.valueOf(id++);
-                empregado.setId(idEmpregado);
-
-                CriarEmpregadoCmd command = new CriarEmpregadoCmd(empregado, empregados);
-                cm.exec(command);
-
-                return idEmpregado;
+                        throws Exception {
+                validarCamposBasicos(nome, endereco, tipo);
+                Empregado novo = EmpregadoFactory.criarEmpregado(tipo, nome, endereco, salario, comissao);
+                String identificador = gerarNovoId();
+                novo.setId(identificador);
+                cmdManager.exec(new CriarEmpregadoCmd(novo, empregados));
+                return identificador;
         }
 
-        public void alteraEmpregado(String emp, String atributo, String valor)
-                        throws Exception, RuntimeException {
-
-                if (emp == null || emp.isBlank())
-                        throw new IdentificacaoDoMembroNulaException("Identificacao do empregado nao pode ser nula.");
-                if (!empregados.containsKey(emp))
-                        throw new EmpregadoNaoExisteException("Empregado nao existe.");
-
-                Map<String, String> valores = Map.of("valor", valor);
-                AlterarEmpregadoCmd command = new AlterarEmpregadoCmd(emp, atributo, valores, empregados,
-                                membrosSindicato);
-                cm.exec(command);
+        // ---------------------------------------------------
+        // MÉTODOS DE ALTERAÇÃO
+        // ---------------------------------------------------
+        public void alteraEmpregado(String emp, String atributo, String valor) throws Exception {
+                verificarEmpregadoExistente(emp);
+                Map<String, String> parametros = Map.of("valor", valor);
+                cmdManager.exec(new AlterarEmpregadoCmd(emp, atributo, parametros, empregados, membros));
         }
 
-        public void alteraEmpregado(String emp, String atributo, String valor, String comissao_salario)
-                        throws Exception, RuntimeException {
+        public void alteraEmpregado(String emp, String atributo, String valor, String comissaoOuSalario)
+                        throws Exception {
+                verificarEmpregadoExistente(emp);
 
-                if (emp == null || emp.isBlank())
-                        throw new IdentificacaoDoMembroNulaException("Identificacao do empregado nao pode ser nula.");
-                if (!empregados.containsKey(emp))
-                        throw new EmpregadoNaoExisteException("Empregado nao existe.");
-
-                Map<String, String> valores;
+                Map<String, String> parametros;
                 if ("tipo".equals(atributo)) {
-                        if ("comissionado".equals(valor)) {
-                                valores = Map.of("valor", valor, "comissao", comissao_salario);
-                        } else {
-                                valores = Map.of("valor", valor, "salario", comissao_salario);
-                        }
+                        parametros = "comissionado".equals(valor)
+                                        ? Map.of("valor", valor, "comissao", comissaoOuSalario)
+                                        : Map.of("valor", valor, "salario", comissaoOuSalario);
                 } else if ("comissao".equals(atributo)) {
-                        valores = Map.of("valor", valor, "comissao", comissao_salario);
+                        parametros = Map.of("valor", valor, "comissao", comissaoOuSalario);
                 } else {
-                        valores = Map.of("valor", valor);
+                        parametros = Map.of("valor", valor);
                 }
 
-                AlterarEmpregadoCmd command = new AlterarEmpregadoCmd(emp, atributo, valores, empregados,
-                                membrosSindicato);
-                cm.exec(command);
+                cmdManager.exec(new AlterarEmpregadoCmd(emp, atributo, parametros, empregados, membros));
         }
 
-        public void alteraEmpregado(String emp, String atributo, String valor1, String banco, String agencia,
-                        String contaCorrente)
-                        throws Exception, RuntimeException {
-
-                if (emp == null || emp.isBlank())
-                        throw new IdentificacaoDoMembroNulaException("Identificacao do empregado nao pode ser nula.");
-                if (!empregados.containsKey(emp))
-                        throw new EmpregadoNaoExisteException("Empregado nao existe.");
-
-                Map<String, String> valores = Map.of("valor1", valor1, "banco", banco, "agencia", agencia,
-                                "contaCorrente",
-                                contaCorrente);
-                AlterarEmpregadoCmd command = new AlterarEmpregadoCmd(emp, atributo, valores, empregados,
-                                membrosSindicato);
-                cm.exec(command);
+        public void alteraEmpregado(String emp, String atributo, String valor1, String banco,
+                        String agencia, String contaCorrente) throws Exception {
+                verificarEmpregadoExistente(emp);
+                Map<String, String> dados = Map.of(
+                                "valor1", valor1,
+                                "banco", banco,
+                                "agencia", agencia,
+                                "contaCorrente", contaCorrente);
+                cmdManager.exec(new AlterarEmpregadoCmd(emp, atributo, dados, empregados, membros));
         }
 
         public void alteraEmpregado(String emp, String atributo, String valor, String idSindicato, String taxaSindical)
-                        throws Exception, RuntimeException {
-
-                if (emp == null || emp.isBlank())
-                        throw new IdentificacaoDoMembroNulaException("Identificacao do empregado nao pode ser nula.");
-                if (!empregados.containsKey(emp))
-                        throw new EmpregadoNaoExisteException("Empregado nao existe.");
-
-                Map<String, String> valores = Map.of("valor", valor, "idSindicato", idSindicato, "taxaSindical",
-                                taxaSindical);
-                AlterarEmpregadoCmd command = new AlterarEmpregadoCmd(emp, atributo, valores, empregados,
-                                membrosSindicato);
-                cm.exec(command);
+                        throws Exception {
+                verificarEmpregadoExistente(emp);
+                Map<String, String> dados = Map.of(
+                                "valor", valor,
+                                "idSindicato", idSindicato,
+                                "taxaSindical", taxaSindical);
+                cmdManager.exec(new AlterarEmpregadoCmd(emp, atributo, dados, empregados, membros));
         }
 
-        public void alteraEmpregado(String emp, String atributo, String valor1, String banco, String agencia,
-                        String contaCorrente, String comissao)
-                        throws Exception, RuntimeException {
-
-                if (emp == null || emp.isBlank())
-                        throw new IdentificacaoDoMembroNulaException("Identificacao do empregado nao pode ser nula.");
-                if (!empregados.containsKey(emp))
-                        throw new EmpregadoNaoExisteException("Empregado nao existe.");
-
-                Map<String, String> valores = Map.of("valor1", valor1, "banco", banco, "agencia", agencia,
-                                "contaCorrente",
-                                contaCorrente, "comissao", comissao);
-                AlterarEmpregadoCmd command = new AlterarEmpregadoCmd(emp, atributo, valores, empregados,
-                                membrosSindicato);
-                cm.exec(command);
+        public void alteraEmpregado(String emp, String atributo, String valor1, String banco,
+                        String agencia, String conta, String comissao) throws Exception {
+                verificarEmpregadoExistente(emp);
+                Map<String, String> dados = Map.of(
+                                "valor1", valor1,
+                                "banco", banco,
+                                "agencia", agencia,
+                                "contaCorrente", conta,
+                                "comissao", comissao);
+                cmdManager.exec(new AlterarEmpregadoCmd(emp, atributo, dados, empregados, membros));
         }
 
-        public void removerEmpregado(String emp)
-                        throws Exception, RuntimeException {
-                if (emp == null || emp.isBlank())
-                        throw new IdentificacaoDoMembroNulaException("Identificacao do empregado nao pode ser nula.");
-                if (!empregados.containsKey(emp))
-                        throw new EmpregadoNaoExisteException("Empregado nao existe.");
-
-                RemoverEmpregadoCmd command = new RemoverEmpregadoCmd(emp, empregados);
-                cm.exec(command);
+        // ---------------------------------------------------
+        // REMOÇÃO
+        // ---------------------------------------------------
+        public void removerEmpregado(String emp) throws Exception {
+                verificarEmpregadoExistente(emp);
+                cmdManager.exec(new RemoverEmpregadoCmd(emp, empregados));
         }
 
-        public String getEmpregadoPorNome(String emp, String indice)
-                        throws Exception, RuntimeException {
-                if (emp == null || emp.isBlank())
+        // ---------------------------------------------------
+        // CONSULTAS
+        // ---------------------------------------------------
+        public String getEmpregadoPorNome(String nome, String indiceStr) throws Exception {
+                if (nome == null || nome.isBlank())
                         throw new IdentificacaoDoMembroNulaException("Identificacao do empregado nao pode ser nula.");
 
-                int indiceInt;
+                int indice;
                 try {
-                        indiceInt = Integer.parseInt(indice);
+                        indice = Integer.parseInt(indiceStr);
                 } catch (NumberFormatException e) {
                         throw new IndiceNaoPodeSerNuloException("Indice deve ser numerico.");
                 }
 
-                List<Empregado> encontrados = empregados.values().stream()
-                                .filter(empregado -> empregado.getNome().equals(emp))
+                List<Empregado> encontrados = empregados.values()
+                                .stream()
+                                .filter(e -> e.getNome().equals(nome))
                                 .toList();
 
-                if (encontrados.isEmpty())
+                if (encontrados.isEmpty() || indice < 1 || indice > encontrados.size()) {
                         throw new EmpregadoNaoExisteException("Nao ha empregado com esse nome.");
+                }
 
-                if (indiceInt < 1 || indiceInt > encontrados.size())
-                        throw new EmpregadoNaoExisteException("Nao ha empregado com esse nome.");
-
-                Empregado escolhido = encontrados.get(indiceInt - 1);
-
-                return escolhido.getId();
+                return encontrados.get(indice - 1).getId();
         }
 
-        public String getAtributoEmpregado(String emp, String atributo)
-                        throws Exception, RuntimeException {
-
+        public String getAtributoEmpregado(String emp, String atributo) throws Exception {
                 if (emp == null || emp.isBlank())
                         throw new IdentificacaoDoMembroNulaException("Identificacao do empregado nao pode ser nula.");
                 if (atributo == null || atributo.isBlank())
@@ -203,63 +148,84 @@ public class EmpregadoService {
                 if (!empregados.containsKey(emp))
                         throw new EmpregadoNaoExisteException("Empregado nao existe.");
 
-                Empregado empregado = empregados.get(emp);
+                Empregado e = empregados.get(emp);
 
-                switch (atributo) {
-                        case "nome":
-                                return empregado.getNome();
-                        case "endereco":
-                                return empregado.getEndereco();
-                        case "tipo":
-                                return empregado.getTipo();
-                        case "salario":
-                                return empregado.getSalario();
-                        case "sindicalizado":
-                                return empregado.getSindicato() != null ? "true" : "false";
-                        case "idSindicato":
-                                if (empregado.getSindicato() == null) {
-                                        throw new EmpregadoNaoEhSindicalizadoException(
-                                                        "Empregado nao eh sindicalizado.");
-                                }
-                                return empregado.getSindicato().getIdMembro();
-                        case "taxaSindical":
-                                if (empregado.getSindicato() == null) {
-                                        throw new EmpregadoNaoEhSindicalizadoException(
-                                                        "Empregado nao eh sindicalizado.");
-                                }
-                                return FormatacaoMonetariaUtil
-                                                .formatValor(empregado.getSindicato().getTaxaSindical());
-                        case "metodoPagamento":
-                                return empregado.getMetodoPagamento().getMetodoPagamento();
-                        case "banco":
-                                if (empregado.getMetodoPagamento() instanceof Banco) {
-                                        return ((Banco) empregado.getMetodoPagamento()).getBanco();
-                                }
-                                throw new EmpregadoNaoRecebeEmBancoException(
-                                                "Empregado nao recebe em banco.");
-                        case "agencia":
-                                if (empregado.getMetodoPagamento() instanceof Banco) {
-                                        return ((Banco) empregado.getMetodoPagamento()).getAgencia();
-                                }
-                                throw new EmpregadoNaoRecebeEmBancoException(
-                                                "Empregado nao recebe em banco.");
-                        case "contaCorrente":
-                                if (empregado.getMetodoPagamento() instanceof Banco) {
-                                        return ((Banco) empregado.getMetodoPagamento()).getContaCorrente();
-                                }
-                                throw new EmpregadoNaoRecebeEmBancoException(
-                                                "Empregado nao recebe em banco.");
-                        case "comissao":
-                                if (empregado instanceof Comissionado) {
-                                        return String.valueOf(((Comissionado) empregado).getTaxaDeComissao())
-                                                        .replace('.', ',');
-                                }
-                                throw new EmpregadoNaoEhComissionadoException(
-                                                "Empregado nao eh comissionado.");
-                        case "agendaPagamento":
-                                return empregado.getAgendaPagamento().getAgenda();
-                        default:
-                                throw new AtributoNaoExisteException("Atributo nao existe.");
+                if ("nome".equals(atributo))
+                        return e.getNome();
+                if ("endereco".equals(atributo))
+                        return e.getEndereco();
+                if ("tipo".equals(atributo))
+                        return e.getTipo();
+                if ("salario".equals(atributo))
+                        return e.getSalario();
+                if ("sindicalizado".equals(atributo))
+                        return e.getSindicato() != null ? "true" : "false";
+
+                if ("idSindicato".equals(atributo)) {
+                        if (e.getSindicato() == null)
+                                throw new EmpregadoNaoEhSindicalizadoException("Empregado nao eh sindicalizado.");
+                        return e.getSindicato().getIdMembro();
                 }
+
+                if ("taxaSindical".equals(atributo)) {
+                        if (e.getSindicato() == null)
+                                throw new EmpregadoNaoEhSindicalizadoException("Empregado nao eh sindicalizado.");
+                        return FormatacaoMonetariaUtil.formatValor(e.getSindicato().getTaxaSindical());
+                }
+
+                if ("metodoPagamento".equals(atributo))
+                        return e.getMetodoPagamento().getMetodoPagamento();
+
+                if ("banco".equals(atributo)) {
+                        if (e.getMetodoPagamento() instanceof Banco b)
+                                return b.getBanco();
+                        throw new EmpregadoNaoRecebeEmBancoException("Empregado nao recebe em banco.");
+                }
+
+                if ("agencia".equals(atributo)) {
+                        if (e.getMetodoPagamento() instanceof Banco b)
+                                return b.getAgencia();
+                        throw new EmpregadoNaoRecebeEmBancoException("Empregado nao recebe em banco.");
+                }
+
+                if ("contaCorrente".equals(atributo)) {
+                        if (e.getMetodoPagamento() instanceof Banco b)
+                                return b.getContaCorrente();
+                        throw new EmpregadoNaoRecebeEmBancoException("Empregado nao recebe em banco.");
+                }
+
+                if ("comissao".equals(atributo)) {
+                        if (e instanceof Comissionado c)
+                                return String.valueOf(c.getTaxaDeComissao()).replace('.', ',');
+                        throw new EmpregadoNaoEhComissionadoException("Empregado nao eh comissionado.");
+                }
+
+                if ("agendaPagamento".equals(atributo))
+                        return e.getAgendaPagamento().getAgenda();
+
+                throw new AtributoNaoExisteException("Atributo nao existe.");
+        }
+
+        // ---------------------------------------------------
+        // MÉTODOS AUXILIARES PRIVADOS
+        // ---------------------------------------------------
+        private void validarCamposBasicos(String nome, String endereco, String tipo) throws Exception {
+                if (nome == null || nome.isBlank())
+                        throw new NomeNuloException("Nome nao pode ser nulo.");
+                if (endereco == null || endereco.isBlank())
+                        throw new EnderecoNuloException("Endereco nao pode ser nulo.");
+                if (tipo == null || tipo.isBlank())
+                        throw new TipoNaoPodeSerNuloException("Tipo nao pode ser nulo.");
+        }
+
+        private void verificarEmpregadoExistente(String emp) throws Exception {
+                if (emp == null || emp.isBlank())
+                        throw new IdentificacaoDoMembroNulaException("Identificacao do empregado nao pode ser nula.");
+                if (!empregados.containsKey(emp))
+                        throw new EmpregadoNaoExisteException("Empregado nao existe.");
+        }
+
+        private String gerarNovoId() {
+                return String.valueOf(contadorId++);
         }
 }

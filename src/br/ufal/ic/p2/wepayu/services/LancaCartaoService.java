@@ -5,7 +5,6 @@ import br.ufal.ic.p2.wepayu.Exception.*;
 import br.ufal.ic.p2.wepayu.cmds.*;
 import br.ufal.ic.p2.wepayu.utils.*;
 
-import java.util.ArrayList;
 import java.util.Map;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -13,195 +12,188 @@ import java.time.format.ResolverStyle;
 
 public class LancaCartaoService {
 
-        private Map<String, Empregado> empregados;
-        private CmdManager cm;
+        private final Map<String, Empregado> empregados;
+        private final CmdManager cmdManager;
 
-        public LancaCartaoService(Map<String, Empregado> empregados, CmdManager cm) {
+        public LancaCartaoService(Map<String, Empregado> empregados, CmdManager cmdManager) {
                 this.empregados = empregados;
-                this.cm = cm;
+                this.cmdManager = cmdManager;
         }
 
-        public void lancaCartao(String emp, String data, String horas)
-                        throws Exception, RuntimeException {
+        // ================================================================
+        // Lançamento de cartão de ponto
+        // ================================================================
+        public void lancaCartao(String emp, String data, String horas) throws Exception {
+                validarCamposBasicos(emp, data, horas);
+                validarEmpregadoExiste(emp);
+                validarFormatoData(data);
 
-                if (emp == null || emp.isBlank())
-                        throw new IdentificacaoDoMembroNulaException("Identificacao do empregado nao pode ser nula.");
-                if (data == null || data.isBlank())
-                        throw new DataNaoPodeSerNulaException("Data nao pode ser nula.");
-                if (horas == null || horas.isBlank())
-                        throw new HorasNaoNumericasException("Horas nao podem ser nulas.");
-                if (!empregados.containsKey(emp))
-                        throw new EmpregadoNaoExisteException("Empregado nao existe.");
+                double totalHoras = converterHoras(horas);
+                if (totalHoras <= 0)
+                        throw new DataInvalidaException("Horas devem ser positivas.");
 
-                try {
-                        LocalDate.parse(data, DateTimeFormatter.ofPattern("d/M/yyyy"));
-                } catch (Exception e) {
-                        throw new DataInvalidaException("Data invalida.");
-                }
-
-                double nmrHoras;
-                try {
-                        nmrHoras = Double.parseDouble(horas.replace(",", "."));
-                        if (nmrHoras <= 0)
-                                throw new DataInvalidaException("Horas devem ser positivas.");
-                } catch (NumberFormatException e) {
-                        throw new DataInvalidaException("Horas devem ser numericas.");
-                }
-
-                LancarCartaoCmd command = new LancarCartaoCmd(emp, data, horas, empregados);
-                cm.exec(command);
+                cmdManager.exec(new LancarCartaoCmd(emp, data, horas, empregados));
         }
 
-        public void lancaVenda(String emp, String data, String valor)
-                        throws Exception, RuntimeException {
+        // ================================================================
+        // Lançamento de venda
+        // ================================================================
+        public void lancaVenda(String emp, String data, String valor) throws Exception {
+                validarCamposBasicos(emp, data, valor);
+                validarEmpregadoExiste(emp);
+                validarFormatoData(data);
 
-                if (emp == null || emp.isBlank())
-                        throw new IdentificacaoDoMembroNulaException("Identificacao do empregado nao pode ser nula.");
-                if (data == null || data.isBlank())
-                        throw new DataNaoPodeSerNulaException("Data nao pode ser nula.");
-                if (valor == null || valor.isBlank())
-                        throw new ValorNuloException("Valor nao pode ser nulo.");
-                if (!empregados.containsKey(emp))
-                        throw new EmpregadoNaoExisteException("Empregado nao existe.");
+                double valorVenda = converterValorMonetario(valor);
+                if (valorVenda <= 0)
+                        throw new ValorNegativoException("Valor deve ser positivo.");
 
-                try {
-                        LocalDate.parse(data, DateTimeFormatter.ofPattern("d/M/yyyy"));
-                } catch (Exception e) {
-                        throw new DataInvalidaException("Data invalida.");
-                }
-
-                double nmrValor;
-                try {
-                        nmrValor = Double.parseDouble(valor.replace(",", "."));
-                        if (nmrValor <= 0)
-                                throw new ValorNegativoException("Valor deve ser positivo.");
-                } catch (NumberFormatException e) {
-                        throw new ValorNaoNumericoException("Valor deve ser numerico.");
-                }
-
-                LancarVendaCmd command = new LancarVendaCmd(emp, data, valor, empregados);
-                cm.exec(command);
+                cmdManager.exec(new LancarVendaCmd(emp, data, valor, empregados));
         }
 
-        public String getHorasNormaisTrabalhadas(String emp, String dataInicial, String dataFinal)
-                        throws Exception, RuntimeException {
-                if (emp == null || emp.isBlank())
-                        throw new IdentificacaoDoMembroNulaException("Identificacao do empregado nao pode ser nula.");
-                if (!empregados.containsKey(emp))
-                        throw new EmpregadoNaoExisteException("Empregado nao existe.");
+        // ================================================================
+        // Horas normais trabalhadas
+        // ================================================================
+        public String getHorasNormaisTrabalhadas(String emp, String dataInicial, String dataFinal) throws Exception {
+                Empregado e = obterEmpregadoHorista(emp);
+                LocalDate inicio = parseDataEstrita(dataInicial, "Data inicial");
+                LocalDate fim = parseDataEstrita(dataFinal, "Data final");
 
-                Empregado empregado = empregados.get(emp);
-
-                if (!empregado.getTipo().equals("horista"))
-                        throw new EmpregadoNaoEhHoristaException("Empregado nao eh horista.");
-
-                LocalDate dtInicial = validarDataStrict(dataInicial, "Data inicial");
-                LocalDate dtFinal = validarDataStrict(dataFinal, "Data final");
-
-                if (dtInicial.isAfter(dtFinal))
+                if (inicio.isAfter(fim))
                         throw new DataInvalidaException("Data inicial nao pode ser posterior aa data final.");
 
-                ArrayList<CartaoPonto> cartoes = empregado.getCartoes();
-                DateTimeFormatter formatador = DateTimeFormatter.ofPattern("d/M/yyyy");
-
-                double horas = cartoes.stream()
-                                .filter(cartao -> {
-                                        LocalDate dataDoCartao = LocalDate.parse(cartao.getData(), formatador);
-                                        boolean aposOuIgualInicio = !dataDoCartao.isBefore(dtInicial);
-                                        boolean antesOuIgualFim = dataDoCartao.isBefore(dtFinal);
-                                        return aposOuIgualInicio && antesOuIgualFim;
-                                })
-                                .mapToDouble(cartao -> Math.min(cartao.getHoras(), 8.0))
+                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("d/M/yyyy");
+                double horas = e.getCartoes().stream()
+                                .filter(c -> dentroDoPeriodo(c.getData(), fmt, inicio, fim))
+                                .mapToDouble(c -> Math.min(c.getHoras(), 8.0))
                                 .sum();
 
-                if (horas % 1 == 0) {
-                        return String.format("%.0f", horas);
-                } else {
-                        return String.format("%.1f", horas).replace(".", ",");
-                }
+                return formatarHoras(horas);
         }
 
-        public String getHorasExtrasTrabalhadas(String emp, String dataInicial, String dataFinal)
-                        throws Exception, RuntimeException {
-                if (emp == null || emp.isBlank())
-                        throw new IdentificacaoDoMembroNulaException("Identificacao do empregado nao pode ser nula.");
-                if (!empregados.containsKey(emp))
-                        throw new EmpregadoNaoExisteException("Empregado nao existe.");
+        // ================================================================
+        // Horas extras trabalhadas
+        // ================================================================
+        public String getHorasExtrasTrabalhadas(String emp, String dataInicial, String dataFinal) throws Exception {
+                Empregado e = obterEmpregadoHorista(emp);
+                LocalDate inicio = parseDataEstrita(dataInicial, "Data inicial");
+                LocalDate fim = parseDataEstrita(dataFinal, "Data final");
 
-                Empregado empregado = empregados.get(emp);
-
-                if (!empregado.getTipo().equals("horista"))
-                        throw new EmpregadoNaoEhHoristaException("Empregado nao eh horista.");
-
-                LocalDate dtInicial = validarDataStrict(dataInicial, "Data inicial");
-                LocalDate dtFinal = validarDataStrict(dataFinal, "Data final");
-
-                if (dtInicial.isAfter(dtFinal)) {
+                if (inicio.isAfter(fim))
                         throw new DataInvalidaException("Data inicial nao pode ser posterior aa data final.");
-                }
 
-                ArrayList<CartaoPonto> cartoes = empregado.getCartoes();
-                DateTimeFormatter formatador = DateTimeFormatter.ofPattern("d/M/yyyy");
-
-                double horas = cartoes.stream()
-                                .filter(cartao -> {
-                                        LocalDate dataDoCartao = LocalDate.parse(cartao.getData(), formatador);
-                                        boolean aposOuIgualInicio = !dataDoCartao.isBefore(dtInicial);
-                                        boolean antesOuIgualFim = dataDoCartao.isBefore(dtFinal);
-                                        return aposOuIgualInicio && antesOuIgualFim;
-                                })
-                                .mapToDouble(cartao -> Math.max(0.0, cartao.getHoras() - 8.0))
+                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("d/M/yyyy");
+                double horasExtras = e.getCartoes().stream()
+                                .filter(c -> dentroDoPeriodo(c.getData(), fmt, inicio, fim))
+                                .mapToDouble(c -> Math.max(0, c.getHoras() - 8.0))
                                 .sum();
 
-                if (horas % 1 == 0) {
-                        return String.format("%.0f", horas);
-                } else {
-                        return String.format("%.1f", horas).replace(".", ",");
-                }
+                return formatarHoras(horasExtras);
         }
 
-        public String getVendasRealizadas(String emp, String dataInicial, String dataFinal)
-                        throws Exception, RuntimeException {
-                if (emp == null || emp.isBlank())
-                        throw new IdentificacaoDoMembroNulaException("Identificacao do empregado nao pode ser nula.");
-                if (!empregados.containsKey(emp))
-                        throw new EmpregadoNaoExisteException("Empregado nao existe.");
+        // ================================================================
+        // Vendas realizadas
+        // ================================================================
+        public String getVendasRealizadas(String emp, String dataInicial, String dataFinal) throws Exception {
+                Empregado e = obterEmpregadoComissionado(emp);
+                LocalDate inicio = parseDataEstrita(dataInicial, "Data inicial");
+                LocalDate fim = parseDataEstrita(dataFinal, "Data final");
 
-                Empregado empregado = empregados.get(emp);
-
-                if (!empregado.getTipo().equals("comissionado"))
-                        throw new TipoInvalidoException("Empregado nao eh comissionado.");
-
-                LocalDate dtInicial = validarDataStrict(dataInicial, "Data inicial");
-                LocalDate dtFinal = validarDataStrict(dataFinal, "Data final");
-
-                if (dtInicial.isAfter(dtFinal)) {
+                if (inicio.isAfter(fim))
                         throw new DataInvalidaException("Data inicial nao pode ser posterior aa data final.");
-                }
 
-                DateTimeFormatter formatador = DateTimeFormatter.ofPattern("d/M/yyyy");
-                ArrayList<ResultadoDeVenda> vendas = empregado.getResultadoDeVenda();
-
-                double valorTotalVendas = vendas.stream()
-                                .filter(venda -> {
-                                        LocalDate dataDaVenda = LocalDate.parse(venda.getData(), formatador);
-                                        boolean aposOuIgualInicio = !dataDaVenda.isBefore(dtInicial);
-                                        boolean antesOuIgualFim = dataDaVenda.isBefore(dtFinal);
-                                        return aposOuIgualInicio && antesOuIgualFim;
-                                })
+                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("d/M/yyyy");
+                double total = e.getResultadoDeVenda().stream()
+                                .filter(v -> dentroDoPeriodo(v.getData(), fmt, inicio, fim))
                                 .mapToDouble(ResultadoDeVenda::getValor)
                                 .sum();
 
-                return FormatacaoMonetariaUtil.formatValor(valorTotalVendas);
+                return FormatacaoMonetariaUtil.formatValor(total);
         }
 
-        private LocalDate validarDataStrict(String data, String tipoData) throws Exception, RuntimeException {
+        // ================================================================
+        // MÉTODOS AUXILIARES PRIVADOS
+        // ================================================================
+
+        private void validarCamposBasicos(String emp, String data, String valorOuHoras) throws Exception {
+                if (emp == null || emp.isBlank())
+                        throw new IdentificacaoDoMembroNulaException("Identificacao do empregado nao pode ser nula.");
+                if (data == null || data.isBlank())
+                        throw new DataNaoPodeSerNulaException("Data nao pode ser nula.");
+                if (valorOuHoras == null || valorOuHoras.isBlank())
+                        throw new ValorNuloException("Valor nao pode ser nulo.");
+        }
+
+        private void validarEmpregadoExiste(String emp) throws EmpregadoNaoExisteException {
+                if (!empregados.containsKey(emp))
+                        throw new EmpregadoNaoExisteException("Empregado nao existe.");
+        }
+
+        private void validarFormatoData(String data) throws DataInvalidaException {
                 try {
-                        DateTimeFormatter formatador = DateTimeFormatter.ofPattern("d/M/uuuu")
-                                        .withResolverStyle(ResolverStyle.STRICT);
-                        return LocalDate.parse(data, formatador);
+                        LocalDate.parse(data, DateTimeFormatter.ofPattern("d/M/yyyy"));
                 } catch (Exception e) {
-                        throw new DataInvalidaException(tipoData + " invalida.");
+                        throw new DataInvalidaException("Data invalida.");
                 }
+        }
+
+        private double converterHoras(String horas) throws DataInvalidaException {
+                try {
+                        return Double.parseDouble(horas.replace(",", "."));
+                } catch (NumberFormatException e) {
+                        throw new DataInvalidaException("Horas devem ser numericas.");
+                }
+        }
+
+        private double converterValorMonetario(String valor) throws ValorNaoNumericoException {
+                try {
+                        return Double.parseDouble(valor.replace(",", "."));
+                } catch (NumberFormatException e) {
+                        throw new ValorNaoNumericoException("Valor deve ser numerico.");
+                }
+        }
+
+        private Empregado obterEmpregadoHorista(String emp) throws Exception {
+                if (emp == null || emp.isBlank())
+                        throw new IdentificacaoDoMembroNulaException("Identificacao do empregado nao pode ser nula.");
+                validarEmpregadoExiste(emp);
+
+                Empregado e = empregados.get(emp);
+                if (!"horista".equals(e.getTipo()))
+                        throw new EmpregadoNaoEhHoristaException("Empregado nao eh horista.");
+
+                return e;
+        }
+
+        private Empregado obterEmpregadoComissionado(String emp) throws Exception {
+                if (emp == null || emp.isBlank())
+                        throw new IdentificacaoDoMembroNulaException("Identificacao do empregado nao pode ser nula.");
+                validarEmpregadoExiste(emp);
+
+                Empregado e = empregados.get(emp);
+                if (!"comissionado".equals(e.getTipo()))
+                        throw new TipoInvalidoException("Empregado nao eh comissionado.");
+
+                return e;
+        }
+
+        private boolean dentroDoPeriodo(String data, DateTimeFormatter fmt, LocalDate inicio, LocalDate fim) {
+                LocalDate d = LocalDate.parse(data, fmt);
+                return (!d.isBefore(inicio)) && d.isBefore(fim);
+        }
+
+        private LocalDate parseDataEstrita(String data, String label) throws DataInvalidaException {
+                try {
+                        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("d/M/uuuu")
+                                        .withResolverStyle(ResolverStyle.STRICT);
+                        return LocalDate.parse(data, fmt);
+                } catch (Exception e) {
+                        throw new DataInvalidaException(label + " invalida.");
+                }
+        }
+
+        private String formatarHoras(double horas) {
+                return (horas % 1 == 0)
+                                ? String.format("%.0f", horas)
+                                : String.format("%.1f", horas).replace(".", ",");
         }
 }
