@@ -4,23 +4,23 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 public class Assalariado extends Empregado {
-    private double remuneracao;
+    private double salarioBase;
 
     public Assalariado() {
     }
 
-    public Assalariado(String nome, String endereco, double salario) {
-        super(nome, endereco);
-        this.remuneracao = salario;
+    public Assalariado(String nomeCompleto, String enderecoCompleto, double salarioBase) {
+        super(nomeCompleto, enderecoCompleto);
+        this.salarioBase = salarioBase;
         this.setAgendaPagamento(AgendaPag.getAgendaPadrao("assalariado"));
     }
 
     public double getSalarioMensal() {
-        return this.remuneracao;
+        return this.salarioBase;
     }
 
-    public void setSalarioMensal(double salarioMensal) {
-        this.remuneracao = salarioMensal;
+    public void setSalarioMensal(double novoSalario) {
+        this.salarioBase = novoSalario;
     }
 
     @Override
@@ -30,24 +30,33 @@ public class Assalariado extends Empregado {
 
     @Override
     public String getSalario() {
-        return formatarValor(this.remuneracao);
-    }
-
-    private String formatarValor(double valor) {
-        BigDecimal decimal = BigDecimal.valueOf(valor);
-        decimal = decimal.setScale(2, RoundingMode.DOWN);
-        return decimal.toString().replace('.', ',');
+        return converterParaFormatoBrasileiro(this.salarioBase);
     }
 
     public boolean validarValorSalarial() {
-        return this.remuneracao >= 0;
+        return this.salarioBase >= 0;
     }
 
     public double calcularSalarioDiario() {
-        return this.remuneracao / 30;
+        return this.salarioBase / 30.0;
     }
 
     public String obterInformacaoSalarial() {
         return "Salário mensal: " + getSalario();
+    }
+
+    private String converterParaFormatoBrasileiro(double valorNumerico) {
+        BigDecimal valorDecimal = BigDecimal.valueOf(valorNumerico);
+        valorDecimal = valorDecimal.setScale(2, RoundingMode.DOWN);
+        String valorFormatado = valorDecimal.toString();
+        return valorFormatado.replace('.', ',');
+    }
+
+    public double obterSalarioAnual() {
+        return this.salarioBase * 12;
+    }
+
+    public boolean possuiSalarioValido() {
+        return validarValorSalarial();
     }
 }
