@@ -9,8 +9,8 @@ import java.util.HashMap;
 
 public class Facade {
 
-    private final Map<String, Empregado> empregados;
-    private final Map<String, MembroSindicato> membros;
+    private final Map<String, Empregado> emps;
+    private final Map<String, MembroSindicato> membsSind;
     private int contadorId;
     private final CmdManager gerenciadorCmds;
 
@@ -18,24 +18,24 @@ public class Facade {
     private final SindicatoService sindicatoSrv;
     private final LancaCartaoService cartaoSrv;
     private final FolhaPagamentoService folhaSrv;
-    private final ArmazenamentoService persistenciaSrv;
+    private final ArmazenamentoService armazenamentoSrv;
 
-    private boolean sistemaFinalizado;
+    private boolean finalizar;
 
     public Facade() {
-        this.empregados = new HashMap<>();
-        this.membros = new HashMap<>();
+        this.emps = new HashMap<>();
+        this.membsSind = new HashMap<>();
         this.contadorId = 0;
         this.gerenciadorCmds = new CmdManager();
 
-        this.empregadoSrv = new EmpregadoService(empregados, membros, contadorId, gerenciadorCmds);
-        this.sindicatoSrv = new SindicatoService(membros, empregados, gerenciadorCmds);
-        this.cartaoSrv = new LancaCartaoService(empregados, gerenciadorCmds);
-        this.folhaSrv = new FolhaPagamentoService(empregados, membros);
-        this.persistenciaSrv = new ArmazenamentoService(empregados, membros, contadorId);
+        this.empregadoSrv = new EmpregadoService(emps, membsSind, contadorId, gerenciadorCmds);
+        this.sindicatoSrv = new SindicatoService(membsSind, emps, gerenciadorCmds);
+        this.cartaoSrv = new LancaCartaoService(emps, gerenciadorCmds);
+        this.folhaSrv = new FolhaPagamentoService(emps, membsSind);
+        this.armazenamentoSrv = new ArmazenamentoService(emps, membsSind, contadorId);
 
-        this.persistenciaSrv.carregarSistema();
-        this.sistemaFinalizado = false;
+        this.armazenamentoSrv.carregarSistema();
+        this.finalizar = false;
     }
 
     /*
@@ -45,21 +45,21 @@ public class Facade {
      */
 
     public void salvarSistema() {
-        persistenciaSrv.salvarSistema();
+        armazenamentoSrv.salvarSistema();
     }
 
     public void carregarSistema() {
-        persistenciaSrv.carregarSistema();
+        armazenamentoSrv.carregarSistema();
     }
 
     public void zerarSistema() {
-        ZerarSistemaCmd resetCmd = new ZerarSistemaCmd(empregados, membros);
+        ZerarSistemaCmd resetCmd = new ZerarSistemaCmd(emps, membsSind);
         gerenciadorCmds.exec(resetCmd);
     }
 
     public void encerrarSistema() {
-        persistenciaSrv.encerrarSistema();
-        sistemaFinalizado = true;
+        armazenamentoSrv.encerrarSistema();
+        finalizar = true;
     }
 
     /*
@@ -123,7 +123,7 @@ public class Facade {
     }
 
     public int getNumeroDeEmpregados() {
-        return empregados.size();
+        return emps.size();
     }
 
     /*
@@ -197,7 +197,7 @@ public class Facade {
      */
 
     public void undo() throws Exception {
-        if (sistemaFinalizado)
+        if (finalizar)
             throw new Exception("Nao pode dar comandos depois de encerrarSistema.");
         gerenciadorCmds.undo();
     }
